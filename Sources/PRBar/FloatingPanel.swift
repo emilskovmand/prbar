@@ -35,6 +35,11 @@ final class FloatingPanel<Content: View>: NSPanel {
         sizeObservation = host.observe(\.preferredContentSize, options: [.initial, .new]) { [weak self] host, _ in
             DispatchQueue.main.async { self?.fit(to: host.preferredContentSize) }
         }
+        // Dragged by its header: keep the new spot, so resizing grows down from there.
+        observers.append(NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: self, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.topLeft = NSPoint(x: self.frame.minX, y: self.frame.maxY)
+        })
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
             guard !Self.keepOpen else { return }
             self?.hide()
@@ -81,6 +86,41 @@ final class FloatingPanel<Content: View>: NSPanel {
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         clickMonitor = nil
         orderOut(nil)
+    }
+}
+
+/// Put behind a view to drag the panel by it. Buttons on top of it keep their clicks.
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        // The panel never activates PRBar, so the first click has to start the drag.
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            NSCursor.closedHand.set()
+            window?.performDrag(with: event)
+            NSCursor.openHand.set()
+        }
+
+        // A tracking area rather than cursor rects: those only apply while PRBar is the active app,
+        // which it usually isn't while the panel is open.
+        override func updateTrackingAreas() {
+            super.updateTrackingAreas()
+            trackingAreas.forEach(removeTrackingArea)
+            addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect], owner: self))
+        }
+
+        override func mouseEntered(with event: NSEvent) { updateCursor(event) }
+        override func mouseMoved(with event: NSEvent) { updateCursor(event) }
+        override func mouseExited(with event: NSEvent) { NSCursor.arrow.set() }
+
+        /// An open hand where a press would drag; the arrow over buttons drawn on top, like Mine / Review.
+        private func updateCursor(_ event: NSEvent) {
+            let hit = window?.contentView?.hitTest(event.locationInWindow)
+            (hit === self ? NSCursor.openHand : NSCursor.arrow).set()
+        }
     }
 }
 

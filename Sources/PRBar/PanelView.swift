@@ -47,8 +47,15 @@ struct PanelView: View {
             TabSwitch(tab: $tab, reviewCount: store.reviewRequested.count)
         }
         .padding(.horizontal, 16)
-        .padding(.top, 10)
+        .padding(.top, 14)
         .padding(.bottom, 2)
+        // A grab bar, so the header reads as the place to drag the panel from.
+        .overlay(alignment: .top) {
+            Capsule().fill(Color.secondary.opacity(0.45)).frame(width: 32, height: 4).padding(.top, 5)
+                .allowsHitTesting(false)  // let the press reach the drag area underneath
+        }
+        .background(WindowDragArea())
+        .help("Drag to move the panel")
     }
 
     // MARK: Tabs
