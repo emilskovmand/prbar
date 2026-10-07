@@ -34,8 +34,8 @@ struct PanelView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
-            section("Ready for review", store.ready)
-            section("Drafts", store.drafts)
+            section("Ready for review", .ready, store.ready)
+            section("Drafts", .draft, store.drafts)
             if !store.agents.isEmpty {
                 SectionHeader(title: "Agents", count: store.agents.count)
                 ForEach(store.agents) { AgentRow(linked: $0).padding(.horizontal, 6) }
@@ -44,9 +44,9 @@ struct PanelView: View {
         .padding(.vertical, 6)
     }
 
-    @ViewBuilder private func section(_ title: String, _ rows: [Store.Row]) -> some View {
+    @ViewBuilder private func section(_ title: String, _ indicator: Indicator, _ rows: [Store.Row]) -> some View {
         if !rows.isEmpty {
-            SectionHeader(title: title, count: rows.count)
+            SectionHeader(title: title, count: rows.count, indicator: indicator)
             ForEach(rows) { PRRow(row: $0).padding(.horizontal, 6) }
         }
     }
@@ -83,7 +83,7 @@ struct PanelView: View {
 
 /// The symbols and colors shared by the panel and the menu bar, so the two always match.
 enum Indicator {
-    case needsYou, working, idle, passing, failing, changesRequested
+    case needsYou, working, idle, passing, failing, ready, draft
 
     var symbol: String {
         switch self {
@@ -92,13 +92,15 @@ enum Indicator {
         case .idle: return "circle"
         case .passing: return "checkmark.circle.fill"
         case .failing: return "xmark.circle.fill"
-        case .changesRequested: return "pencil.circle.fill"
+        case .ready, .draft: return "arrow.triangle.pull"
         }
     }
 
     var nsColor: NSColor {
         switch self {
-        case .needsYou, .changesRequested: return .systemOrange
+        case .needsYou: return .systemOrange
+        case .ready: return .systemGreen
+        case .draft: return .systemGray
         case .working, .passing: return .systemGreen
         case .idle: return .tertiaryLabelColor
         case .failing: return .systemRed
@@ -108,7 +110,7 @@ enum Indicator {
     var color: Color { Color(nsColor: nsColor) }
 
     /// Symbols with a glyph inside the circle (✗, pencil), which needs a second color to show.
-    var hasGlyph: Bool { self == .passing || self == .failing || self == .changesRequested }
+    var hasGlyph: Bool { self == .passing || self == .failing }
 
     init(_ state: AgentState) {
         switch state {
@@ -127,9 +129,16 @@ private struct HeightKey: PreferenceKey {
 private struct SectionHeader: View {
     let title: String
     let count: Int
+    var indicator: Indicator? = nil
 
     var body: some View {
-        HStack {
+        HStack(spacing: 5) {
+            if let indicator {
+                // Same icon as the menu bar count for this section.
+                Image(systemName: indicator.symbol)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(indicator.color)
+            }
             Text(title.uppercased())
                 .font(.caption2.weight(.semibold))
                 .tracking(0.5)
@@ -213,8 +222,7 @@ private struct PRRow: View {
         if pr.mergeable == "CONFLICTING" { parts.append(Text("conflicts").foregroundColor(.red)) }
         switch pr.reviewDecision {
         case "CHANGES_REQUESTED":
-            parts.append((Text(Image(systemName: Indicator.changesRequested.symbol)) + Text(" changes requested"))
-                .foregroundColor(Indicator.changesRequested.color))
+            parts.append(Text("changes requested").foregroundColor(.orange))
         case "APPROVED": parts.append(Text("approved").foregroundColor(.green))
         default: break
         }

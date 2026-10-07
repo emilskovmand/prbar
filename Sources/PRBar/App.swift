@@ -33,8 +33,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func renderTitle() {
         let (title, tip) = Self.title(for: store.counts)
         statusItem.button?.attributedTitle = title
+        // The green and grey PR icons already say what this is; keep the plain icon only when there's nothing to count.
+        statusItem.button?.image = title.length > 0 ? nil : Self.baseIcon
         statusItem.button?.toolTip = tip
     }
+
+    private static let baseIcon: NSImage? = {
+        let image = NSImage(systemSymbolName: "arrow.triangle.pull", accessibilityDescription: "Pull requests")
+        image?.isTemplate = true
+        return image
+    }()
 
     /// PR counts use the same icons as the PR rows in the panel; agents only show up here when one needs you.
     static func title(for c: Store.Counts) -> (NSAttributedString, String) {
@@ -61,9 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             tips.append("\(count) \(count == 1 ? one : many)")
         }
         add(.needsYou, c.needsYou, "agent needs you", "agents need you")
-        add(.passing, c.passing, "PR passing CI", "PRs passing CI")
+        add(.ready, c.ready, "PR ready for review", "PRs ready for review")
+        add(.draft, c.drafts, "draft PR", "draft PRs")
         add(.failing, c.failing, "PR failing CI", "PRs failing CI")
-        add(.changesRequested, c.changesRequested, "PR with changes requested", "PRs with changes requested")
         return (title, tips.isEmpty ? "PRBar" : tips.joined(separator: "\n"))
     }
 }

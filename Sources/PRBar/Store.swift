@@ -17,7 +17,7 @@ final class Store: ObservableObject {
 
     /// The counts shown in the menu bar, taken from exactly what the panel lists.
     struct Counts: Equatable {
-        var needsYou = 0, passing = 0, failing = 0, changesRequested = 0
+        var needsYou = 0, ready = 0, drafts = 0, failing = 0
     }
 
     @Published private(set) var ready: [Row] = []
@@ -141,9 +141,9 @@ final class Store: ObservableObject {
         agents = sortAgents(visibleAgents()).map { LinkedAgent(agent: $0, pr: match($0)) }
         counts = Counts(
             needsYou: agents.filter { $0.agent.state == .needsYou }.count,
-            passing: prs.filter { $0.ci == .passing }.count,
-            failing: prs.filter { $0.ci == .failing }.count,
-            changesRequested: prs.filter { $0.reviewDecision == "CHANGES_REQUESTED" }.count
+            ready: ready.count,
+            drafts: drafts.count,
+            failing: prs.filter { $0.ci == .failing }.count
         )
         onChange?()
     }
