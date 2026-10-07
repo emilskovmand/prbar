@@ -66,17 +66,21 @@ The formula lives in [emilskovmand/homebrew-tap](https://github.com/emilskovmand
 - builds the app from source (under a minute), so you need macOS 15+ and Xcode 16+ or its command line tools (`xcode-select --install`). The app isn't signed with an Apple developer certificate, so a downloaded copy would be blocked by Gatekeeper; a locally built one isn't.
 - installs `gh` if it's missing. Log it in with `gh auth login`; PRBar reads your PRs through it.
 - adds a `prbar` command, so `prbar --dump` works from any terminal.
+- adds PRBar to Spotlight (see below).
 - sets up `brew services`, which starts PRBar at login. In a Homebrew install the gear menu's **Open at Login** is replaced by a button that copies `brew services start prbar`, because a login item would point at the versioned Cellar folder and break on upgrade.
 
 | Task | Command |
 | --- | --- |
+| Open it after quitting | Search for **PRBar** in Spotlight, or `brew services restart prbar` |
 | Run once without the service | `open $(brew --prefix)/opt/prbar/PRBar.app` |
 | Upgrade | Click **Update** in the panel, or `brew upgrade prbar && brew services restart prbar` |
-| Stop and remove | `brew services stop prbar && brew uninstall prbar` |
+| Stop and remove | `brew services stop prbar && brew uninstall prbar && rm -rf ~/Applications/PRBar.app` |
 
 **Updates:** Homebrew doesn't upgrade packages on its own. Instead, PRBar checks GitHub for a newer release tag at launch and every 6 hours (and when you press refresh). When there is one, the panel footer shows **Update available**. Clicking **Update** runs `brew update` and `brew upgrade emilskovmand/tap/prbar`, then restarts PRBar: through launchd when it runs under `brew services`, otherwise by opening the new version before quitting. Source builds show a **View** button that links to these instructions instead.
 
-**Switching from a source build:** quit the copy in `~/Applications` (gear menu → Quit PRBar), turn off its **Open at Login** first if you enabled it, and delete `~/Applications/PRBar.app`. Otherwise you'll get two menu bar icons after a restart.
+**Spotlight:** Spotlight doesn't index Homebrew's folders, so the Homebrew copy adds a small launcher app at `~/Applications/PRBar.app` when it starts. Opening it from Spotlight or Finder starts PRBar through `brew services` if it isn't running, so it stays the background service, or runs PRBar directly if the service was never set up. If PRBar is already running, it shows the panel instead. The launcher only points at `$(brew --prefix)/opt/prbar`, which follows upgrades, so it never needs updating by hand. PRBar rewrites it only when the launcher itself changes.
+
+**Switching from a source build:** quit the copy in `~/Applications` (gear menu → Quit PRBar) and turn off its **Open at Login** first if you enabled it. When the Homebrew copy starts, it moves the old `~/Applications/PRBar.app` to the Trash and puts its launcher there. Anything else at that path that isn't PRBar is left alone.
 
 ## Build from source
 
@@ -87,7 +91,7 @@ Requires macOS 15+, Xcode command line tools, and an authenticated `gh` CLI.
 ./scripts/build-app.sh --install  # copies to ~/Applications and launches it
 ```
 
-When built this way, enable **Open at Login** from the gear menu in the panel to start it automatically.
+When built this way, enable **Open at Login** from the gear menu in the panel to start it automatically. Don't mix this with a Homebrew install: whenever the Homebrew copy starts, it moves a source build in `~/Applications` to the Trash and replaces it with its Spotlight launcher.
 
 ## Releasing
 

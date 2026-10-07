@@ -361,6 +361,10 @@ private struct ErrorLine: View {
 
 let isHomebrewInstall = Bundle.main.bundlePath.contains("/Cellar/") || Bundle.main.bundlePath.contains("/opt/prbar/")
 
+/// …/Cellar/prbar/0.1.4/PRBar.app → …/opt/prbar/PRBar.app, which always points at the newest version.
+let stableAppPath = Bundle.main.bundlePath.replacingOccurrences(
+    of: #"/Cellar/prbar/[^/]+/"#, with: "/opt/prbar/", options: .regularExpression)
+
 /// Opens the link without bringing the browser to the front, so the panel keeps focus.
 func openInBackground(_ url: URL) {
     let config = NSWorkspace.OpenConfiguration()

@@ -21,15 +21,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.start()
         updater.start()
         renderTitle()
+
+        DispatchQueue.global(qos: .utility).async { Launcher.install() }
+        // Opening the launcher while PRBar runs sends this (see `--show-panel`).
+        DistributedNotificationCenter.default().addObserver(forName: Launcher.showPanelNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.showPanel()
+        }
+        // Started from the Spotlight launcher: show the panel once the menu bar item has its place.
+        if UserDefaults.standard.bool(forKey: Launcher.showPanelKey) {
+            UserDefaults.standard.removeObject(forKey: Launcher.showPanelKey)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.showPanel() }
+        }
     }
 
     @objc private func togglePanel() {
-        guard let button = statusItem.button else { return }
-        if panel.isVisible {
-            panel.hide()
-        } else {
-            panel.show(below: button)
-        }
+        if panel.isVisible { panel.hide() } else { showPanel() }
+    }
+
+    private func showPanel() {
+        guard let button = statusItem.button, !panel.isVisible else { return }
+        panel.show(below: button)
     }
 
     private func renderTitle() {

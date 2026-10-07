@@ -4,6 +4,12 @@ import SwiftUI
 let app = NSApplication.shared
 let delegate = AppDelegate()
 
+if CommandLine.arguments.contains("--show-panel") {
+    // From the Spotlight launcher when PRBar is already running: ask that copy to show its panel.
+    DistributedNotificationCenter.default().postNotificationName(Launcher.showPanelNotification, object: nil, userInfo: nil, deliverImmediately: true)
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--dump") {
     delegate.store.dump()
     exit(0)

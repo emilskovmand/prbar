@@ -73,10 +73,7 @@ final class Updater: ObservableObject {
         }
         let config = NSWorkspace.OpenConfiguration()
         config.createsNewApplicationInstance = true
-        // …/Cellar/prbar/0.1.4/PRBar.app → …/opt/prbar/PRBar.app, which always points at the newest version.
-        let path = Bundle.main.bundlePath.replacingOccurrences(
-            of: #"/Cellar/prbar/[^/]+/"#, with: "/opt/prbar/", options: .regularExpression)
-        let app = URL(fileURLWithPath: path)
+        let app = URL(fileURLWithPath: stableAppPath)
         NSWorkspace.shared.openApplication(at: app, configuration: config) { _, _ in
             DispatchQueue.main.async { NSApp.terminate(nil) }
         }
