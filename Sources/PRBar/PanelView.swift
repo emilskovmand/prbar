@@ -259,7 +259,7 @@ private struct ChatButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
-        .help("Open latest chat: \(agent.name)\n\(agent.source)\(stateText) · \(relativeTime(agent.lastActivity)) ago\n\(destination)")
+        .help("Open latest chat: \(agent.name)\n\(agent.source)\(stateText) · \(relativeTime(agent.lastActivity)) ago\n\(ChatOpener.destination(for: agent))")
     }
 
     private var stateText: String {
@@ -270,20 +270,10 @@ private struct ChatButton: View {
         }
     }
 
-    private var destination: String {
-        switch agent.kind {
-        case .codex: return "Opens in Codex"
-        case .cloud: return "Opens on claude.ai"
-        case .local:
-            if agent.running { return "Switches to its terminal tab" }
-            return agent.source == "Desktop" ? "Opens in Claude Desktop" : "Resumes in a new terminal window"
-        }
-    }
 }
 
 private struct AgentRow: View {
     let linked: Store.LinkedAgent
-    @State private var copied = false
 
     private var agent: Agent { linked.agent }
     private var indicator: Indicator { Indicator(agent.state) }
@@ -304,8 +294,8 @@ private struct AgentRow: View {
                 .foregroundStyle(.secondary)
                 .fixedSize()
         }
-        .modifier(RowButton(action: activate))
-        .help([agent.name, agent.detail, hint].compactMap { $0 }.joined(separator: "\n\n"))
+        .modifier(RowButton { ChatOpener.open(agent) })
+        .help([agent.name, agent.detail, ChatOpener.destination(for: agent)].compactMap { $0 }.joined(separator: "\n\n"))
     }
 
     private var trailing: Text {
@@ -315,32 +305,10 @@ private struct AgentRow: View {
         case .working: parts.append(Text("working").foregroundColor(indicator.color))
         case .idle: break
         }
-        if copied { parts.append(Text("copied")) }
         if let pr = linked.pr { parts.append(Text("#\(pr.number)")) }
         parts.append(Text(agent.source))
         parts.append(Text(relativeTime(agent.lastActivity)).monospacedDigit())
         return parts.dropFirst().reduce(parts[0]) { $0 + Text(" · ") + $1 }
-    }
-
-    private var hint: String? {
-        if agent.kind == .codex, agent.openURL != nil { return "Click to open in Codex" }
-        if agent.openURL != nil { return "Click to open in claude.ai" }
-        if agent.resumeCommand != nil { return "Click to copy the resume command" }
-        return nil
-    }
-
-    private func activate() {
-        if let url = agent.openURL, agent.kind == .codex {
-            // Jumping to a Codex chat means switching to Codex, so bring it to the front.
-            NSWorkspace.shared.open(url)
-        } else if let url = agent.openURL {
-            openInBackground(url)
-        } else if let cmd = agent.resumeCommand {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(cmd, forType: .string)
-            copied = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
-        }
     }
 }
 

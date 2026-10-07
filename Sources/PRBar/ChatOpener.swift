@@ -4,6 +4,17 @@ import AppKit
 /// terminal window or Claude Desktop for a finished one (wherever it was started), Codex, or claude.ai.
 enum ChatOpener {
 
+    /// Where `open` will take the user, for tooltips.
+    static func destination(for agent: Agent) -> String {
+        switch agent.kind {
+        case .codex: return "Opens in Codex"
+        case .cloud: return "Opens on claude.ai"
+        case .local:
+            if agent.running { return agent.hostApp?.lastPathComponent == "Claude.app" ? "Opens in Claude Desktop" : "Switches to its terminal tab" }
+            return agent.source == "Desktop" ? "Opens in Claude Desktop" : "Resumes in a new terminal window"
+        }
+    }
+
     static func open(_ agent: Agent) {
         switch agent.kind {
         case .codex, .cloud:

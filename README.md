@@ -38,7 +38,7 @@ The 💬 button on a PR opens the most recent agent chat that worked on it, runn
 
 Finished chats come from Claude Code transcripts and Codex threads of the last 14 days. They're linked to a PR by the PR the session opened or linked, or by the ticket id in its worktree folder or title. The checked-out branch isn't used for finished chats, because in a shared checkout it only says what happened to be checked out.
 
-Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a Codex agent opens that chat in the Codex app (part of ChatGPT.app, via a `codex://threads/<id>` link) and brings it to the front; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
+Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking an agent in the Agents section opens its chat the same way as the 💬 button (see the table above). The panel closes on Esc or a click outside.
 
 ## Data sources
 
