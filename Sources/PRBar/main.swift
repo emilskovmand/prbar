@@ -12,10 +12,11 @@ if CommandLine.arguments.contains("--dump") {
 if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
     // Render the panel to a PNG, for checking the layout without clicking the menu bar.
     delegate.store.loadOnce()
-    let view = NSHostingView(rootView: PanelView(store: delegate.store).background(Color(nsColor: .windowBackgroundColor)))
+    delegate.updater.check()
+    let view = NSHostingView(rootView: PanelView(store: delegate.store, updater: delegate.updater).background(Color(nsColor: .windowBackgroundColor)))
     view.frame.size = view.fittingSize
     view.layoutSubtreeIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(0.5))  // let the content height settle
+    RunLoop.main.run(until: Date().addingTimeInterval(3))  // let the update check and content height settle
     view.frame.size = view.fittingSize
     view.layoutSubtreeIfNeeded()
     if let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {

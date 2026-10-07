@@ -3,8 +3,9 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = Store()
+    let updater = Updater()
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private lazy var panel = FloatingPanel(rootView: PanelView(store: store))
+    private lazy var panel = FloatingPanel(rootView: PanelView(store: store, updater: updater))
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let button = statusItem.button {
@@ -18,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store.onChange = { [weak self] in self?.renderTitle() }
         store.start()
+        updater.start()
         renderTitle()
     }
 

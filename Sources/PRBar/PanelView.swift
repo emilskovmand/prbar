@@ -5,6 +5,7 @@ import SwiftUI
 /// so the panel stays open and several PRs can be opened in a row.
 struct PanelView: View {
     @ObservedObject var store: Store
+    @ObservedObject var updater: Updater
     @State private var contentHeight: CGFloat = 0
 
     private let maxHeight: CGFloat = 600
@@ -53,6 +54,7 @@ struct PanelView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if let version = updater.available { UpdateLine(updater: updater, version: version) }
             if let e = store.githubError { ErrorLine(source: "GitHub", message: e) }
             if let e = store.cloudError { ErrorLine(source: "Cloud", message: e) }
             HStack(spacing: 10) {
@@ -60,7 +62,7 @@ struct PanelView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button { store.refreshAll() } label: { Image(systemName: "arrow.clockwise") }
+                Button { store.refreshAll(); updater.check() } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(.borderless)
                     .keyboardShortcut("r")
                     .help("Refresh now (⌘R)")
@@ -309,6 +311,39 @@ private struct AgentRow: View {
         parts.append(Text(agent.source))
         parts.append(Text(relativeTime(agent.lastActivity)).monospacedDigit())
         return parts.dropFirst().reduce(parts[0]) { $0 + Text(" · ") + $1 }
+    }
+}
+
+private struct UpdateLine: View {
+    @ObservedObject var updater: Updater
+    let version: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.down.circle.fill").foregroundStyle(.blue)
+                Text("Update available: v\(version)")
+                    .font(.caption.weight(.medium))
+                Text("(you have v\(updater.current))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if updater.state == .updating {
+                    ProgressView().controlSize(.small)
+                    Text("Updating…").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Button(isHomebrewInstall ? "Update" : "View") { updater.update() }
+                        .controlSize(.small)
+                        .help(isHomebrewInstall
+                              ? "Runs brew upgrade prbar and restarts PRBar"
+                              : "Opens the install instructions on GitHub")
+                }
+            }
+            if case .failed(let message) = updater.state {
+                ErrorLine(source: "Update", message: message)
+            }
+        }
+        .padding(.bottom, 2)
     }
 }
 

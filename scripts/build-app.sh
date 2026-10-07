@@ -9,6 +9,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$(swift build -c release --show-bin-path)/PRBar" "$APP/Contents/MacOS/PRBar"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+# Stamp the version from git (e.g. 0.1.4, or 0.1.4-2-gabc123 between releases) for the update check.
+VERSION=$(git describe --tags --always 2>/dev/null | sed 's/^v//')
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION:-0.0.0-dev}" "$APP/Contents/Info.plist"
 codesign --force --sign - "$APP" >/dev/null
 echo "Built $APP"
 

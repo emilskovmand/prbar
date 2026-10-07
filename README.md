@@ -71,8 +71,10 @@ The formula lives in [emilskovmand/homebrew-tap](https://github.com/emilskovmand
 | Task | Command |
 | --- | --- |
 | Run once without the service | `open $(brew --prefix)/opt/prbar/PRBar.app` |
-| Upgrade | `brew upgrade prbar && brew services restart prbar` |
+| Upgrade | Click **Update** in the panel, or `brew upgrade prbar && brew services restart prbar` |
 | Stop and remove | `brew services stop prbar && brew uninstall prbar` |
+
+**Updates:** Homebrew doesn't upgrade packages on its own. Instead, PRBar checks GitHub for a newer release tag at launch and every 6 hours (and when you press refresh). When there is one, the panel footer shows **Update available**. Clicking **Update** runs `brew update` and `brew upgrade emilskovmand/tap/prbar`, then restarts PRBar: through launchd when it runs under `brew services`, otherwise by opening the new version before quitting. Source builds show a **View** button that links to these instructions instead.
 
 **Switching from a source build:** quit the copy in `~/Applications` (gear menu → Quit PRBar), turn off its **Open at Login** first if you enabled it, and delete `~/Applications/PRBar.app`. Otherwise you'll get two menu bar icons after a restart.
 
@@ -97,7 +99,9 @@ Homebrew installs a tagged release, so changes on `main` reach brew users only a
    curl -sL https://github.com/emilskovmand/prbar/archive/refs/tags/v0.1.2.tar.gz | shasum -a 256
    ```
 3. In [homebrew-tap](https://github.com/emilskovmand/homebrew-tap), update `url` and `sha256` in `Formula/prbar.rb`, then commit and push.
-4. Users run `brew upgrade prbar && brew services restart prbar`.
+4. Within 6 hours, running copies show **Update available**. Users can also run `brew upgrade prbar && brew services restart prbar`.
+
+The formula stamps the release version into the app's `Info.plist`, and the update check compares against it. `scripts/build-app.sh` stamps `git describe --tags` instead.
 
 Always use a new tag; don't move an existing one. GitHub caches tag archives, so a moved tag keeps serving the old code and its old checksum.
 
