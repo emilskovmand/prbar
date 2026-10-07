@@ -48,7 +48,7 @@ Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the backgro
 | Local Claude Code sessions (CLI, Desktop, IDE) | `~/.claude/sessions/<pid>.json` (live status) plus incremental tail of each session's transcript (`pr-link`, `ai-title`, `last-prompt`, recaps) | 3s |
 | Codex threads (CLI and desktop app) | `~/.codex/state_*.sqlite` `threads` table, plus the task events at the end of each rollout log. Claude Code sessions Codex imported (listed in `external_agent_session_imports.json`) and Codex sub-agents are skipped. Idle threads are shown only while Codex is running. | 5s |
 | Finished chats, for the 💬 button | Claude Code transcripts in `~/.claude/projects` modified in the last 14 days (re-read only when they change), and Codex threads from the same period | 60s |
-| Cloud Claude Code sessions | `api.anthropic.com/v1/code/sessions`, using the `claude` CLI's login from the keychain (read only; never refreshed here) | 30s |
+| Cloud Claude Code sessions | `api.anthropic.com/v1/code/sessions`, using the `claude` CLI's login from the keychain (read only; never refreshed here). Remote Control (`bridge`) sessions are skipped: they're local sessions mirrored to claude.ai and unreachable once that machine's session ends. A cloud session waiting for input counts as "needs you" only for 24 hours. | 30s |
 
 Agents are linked to PRs in this order: the PR the session itself linked (`pr-link` / "PR #123" in a cloud summary), then the git branch of the session's working directory or the cloud session's branch, then the ticket id (`bli-1637`) in the worktree name or branch.
 

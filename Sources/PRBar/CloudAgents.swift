@@ -47,6 +47,9 @@ final class CloudAgents {
 
     private func agent(from s: [String: Any]) -> Agent? {
         guard let id = s["id"] as? String, s["status"] as? String == "active" else { return nil }
+        // Remote Control ("bridge") sessions are local sessions mirrored to claude.ai. When the machine or
+        // CLI is gone they can't be reached; when it's running, it's already listed as a local agent.
+        guard s["environment_kind"] as? String != "bridge" else { return nil }
 
         let meta = s["external_metadata"] as? [String: Any] ?? [:]
         let summary = meta["post_turn_summary"] as? [String: Any] ?? [:]
@@ -66,11 +69,15 @@ final class CloudAgents {
         let texts = ["status_detail", "recent_action", "needs_action"].compactMap { summary[$0] as? String }
         let prNumber = texts.lazy.compactMap(Self.prNumber(in:)).first
 
+        let lastActivity = parseISO(s["last_event_at"] as? String) ?? parseISO(s["updated_at"] as? String)
         let worker = s["worker_status"] as? String ?? ""
+        let waiting = summary["status_category"] as? String == "need_input" || s["status_bucket"] as? String == "blocked"
+        // A question left unanswered for a day is an abandoned session, not something waiting on you.
+        let stale = lastActivity.map { -$0.timeIntervalSinceNow > 24 * 3600 } ?? true
         let state: AgentState
         if ["running", "busy", "working", "active"].contains(worker) {
             state = .working
-        } else if summary["status_category"] as? String == "need_input" || s["status_bucket"] as? String == "blocked" {
+        } else if waiting && !stale {
             state = .needsYou
         } else {
             state = .idle
@@ -85,7 +92,7 @@ final class CloudAgents {
             name: title,
             state: state,
             detail: detail.map(oneLine),
-            lastActivity: parseISO(s["last_event_at"] as? String) ?? parseISO(s["updated_at"] as? String),
+            lastActivity: lastActivity,
             prRepo: prNumber == nil ? nil : repo,
             prNumber: prNumber,
             branches: branches,
