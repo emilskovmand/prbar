@@ -57,7 +57,7 @@ final class LocalAgents {
             agents.append(Agent(
                 id: s.sessionId,
                 kind: .local,
-                source: Self.source(for: s.entrypoint),
+                source: claudeSource(for: s.entrypoint),
                 name: t?.title ?? s.name ?? s.sessionId,
                 state: Self.state(for: s.status),
                 detail: t?.awaySummary ?? t?.lastPrompt.map { "› \($0)" },
@@ -76,17 +76,6 @@ final class LocalAgents {
         transcripts = transcripts.filter { seen.contains($0.key) }
         hostCache = hostCache.filter { seenPids.contains($0.key) }
         return agents
-    }
-
-    /// Claude Desktop and IDE sessions run the same CLI and register here too; label them by entrypoint.
-    private static func source(for entrypoint: String?) -> String {
-        switch entrypoint {
-        case nil, "cli": return "CLI"
-        case "claude-desktop", "desktop", "local-agent": return "Desktop"
-        case "claude-vscode": return "VS Code"
-        case let e? where e.hasPrefix("sdk"): return "SDK"
-        case let e?: return e
-        }
     }
 
     private static func state(for status: String?) -> AgentState {
@@ -188,6 +177,17 @@ final class LocalAgents {
         let branch = (out?.isEmpty ?? true) ? nil : out
         branchCache[cwd] = (branch, Date())
         return branch
+    }
+}
+
+/// Claude Desktop and IDE sessions run the same CLI and register here too; label them by entrypoint.
+func claudeSource(for entrypoint: String?) -> String {
+    switch entrypoint {
+    case nil, "cli": return "CLI"
+    case "claude-desktop", "desktop", "local-agent": return "Desktop"
+    case "claude-vscode": return "VS Code"
+    case let e? where e.hasPrefix("sdk"): return "SDK"
+    case let e?: return e
     }
 }
 

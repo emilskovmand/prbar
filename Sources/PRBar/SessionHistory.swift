@@ -73,7 +73,7 @@ final class SessionHistory {
         return Agent(
             id: sessionId,
             kind: .local,
-            source: entrypoint == "claude-desktop" ? "Desktop" : "CLI",
+            source: claudeSource(for: entrypoint),
             name: title.map(oneLine) ?? sessionId,
             state: .idle,
             detail: nil,

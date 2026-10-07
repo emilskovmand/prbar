@@ -24,14 +24,15 @@ PR rows only list what needs attention (failing or running checks, review state,
 
 The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI or with merge conflicts (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
 
-The 💬 button on a PR opens the most recent agent chat that worked on it, running or finished:
+The 💬 button on a PR opens the most recent agent chat that worked on it, running or finished, in the app it was started in:
 
 | Latest chat | Opens |
 | --- | --- |
 | Claude Code, running in iTerm2 or Terminal | Switches to its tab (first use asks for Automation permission) |
 | Claude Code, running in another app (Cursor, VS Code…) | Brings that app forward |
-| Claude Code, finished | Claude Desktop, via `claude://resume?session=<id>`, which imports the transcript into its Code tab. Turn off **Open finished Claude chats in Claude Desktop** in the gear menu to resume it with `claude --resume` in a new iTerm2 (or Terminal) window instead. |
-| Claude Desktop session | Claude Desktop |
+| Claude Code, finished, started in a terminal | `claude --resume <id>` in a new iTerm2 window (Terminal if iTerm2 isn't installed), in the session's folder |
+| Claude Code, finished, started in Claude Desktop | Claude Desktop, via `claude://resume?session=<id>` |
+| Claude Desktop session, running | Claude Desktop |
 | Codex | That thread in Codex (`codex://threads/<id>`) |
 | Cloud | The session on claude.ai |
 

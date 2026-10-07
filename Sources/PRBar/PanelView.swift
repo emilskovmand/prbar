@@ -74,10 +74,6 @@ struct PanelView: View {
                     } else {
                         Toggle("Open at Login", isOn: Binding(get: { store.openAtLogin }, set: { store.setOpenAtLogin($0) }))
                     }
-                    Toggle("Open finished Claude chats in Claude Desktop", isOn: Binding(
-                        get: { store.preferDesktop },
-                        set: { store.preferDesktop = $0 }
-                    ))
                     Divider()
                     Button("Quit PRBar") { NSApp.terminate(nil) }
                 } label: {
@@ -280,7 +276,7 @@ private struct ChatButton: View {
         case .cloud: return "Opens on claude.ai"
         case .local:
             if agent.running { return "Switches to its terminal tab" }
-            return agent.source == "Desktop" || ChatOpener.preferDesktop ? "Opens in Claude Desktop" : "Resumes in a new terminal window"
+            return agent.source == "Desktop" ? "Opens in Claude Desktop" : "Resumes in a new terminal window"
         }
     }
 }

@@ -30,9 +30,6 @@ final class Store: ObservableObject {
     @Published private(set) var cloudError: String?
     @Published private(set) var githubUpdated: Date?
     @Published private(set) var openAtLogin = SMAppService.mainApp.status == .enabled
-    @Published var preferDesktop = ChatOpener.preferDesktop {
-        didSet { ChatOpener.preferDesktop = preferDesktop }
-    }
 
     /// Called on the main thread after every update, for the menu bar title.
     var onChange: (() -> Void)?

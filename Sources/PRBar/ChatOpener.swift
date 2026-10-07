@@ -1,15 +1,8 @@
 import AppKit
 
-/// Opens an agent's chat where it lives: the iTerm/Terminal tab of a running CLI session,
-/// Claude Desktop (or a new terminal window) for an ended Claude Code session, Codex, or claude.ai.
+/// Opens an agent's chat where it lives: the iTerm/Terminal tab of a running CLI session, a new
+/// terminal window or Claude Desktop for a finished one (wherever it was started), Codex, or claude.ai.
 enum ChatOpener {
-    static let preferDesktopKey = "openEndedChatsInClaudeDesktop"
-
-    /// Ended Claude Code sessions open in Claude Desktop unless the user switched this off.
-    static var preferDesktop: Bool {
-        get { UserDefaults.standard.object(forKey: preferDesktopKey) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: preferDesktopKey) }
-    }
 
     static func open(_ agent: Agent) {
         switch agent.kind {
@@ -18,7 +11,8 @@ enum ChatOpener {
         case .local:
             if agent.running {
                 focusRunning(agent)
-            } else if agent.source == "Desktop" || preferDesktop {
+            } else if agent.source == "Desktop" {
+                // Started in Claude Desktop, so that's where this user works.
                 openInDesktop(agent)
             } else {
                 resumeInTerminal(agent)
