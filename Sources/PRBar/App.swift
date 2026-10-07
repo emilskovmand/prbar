@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.toolTip = tip
     }
 
-    /// Same symbols and colors as the panel, counting exactly what the panel lists.
+    /// PR counts use the same icons as the PR rows in the panel; agents only show up here when one needs you.
     static func title(for c: Store.Counts) -> (NSAttributedString, String) {
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
         let title = NSMutableAttributedString()
@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             tips.append("\(count) \(count == 1 ? one : many)")
         }
         add(.needsYou, c.needsYou, "agent needs you", "agents need you")
-        add(.working, c.working, "agent working", "agents working")
+        add(.passing, c.passing, "PR passing CI", "PRs passing CI")
         add(.failing, c.failing, "PR failing CI", "PRs failing CI")
         add(.changesRequested, c.changesRequested, "PR with changes requested", "PRs with changes requested")
         return (title, tips.isEmpty ? "PRBar" : tips.joined(separator: "\n"))

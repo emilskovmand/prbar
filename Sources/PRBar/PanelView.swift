@@ -83,13 +83,14 @@ struct PanelView: View {
 
 /// The symbols and colors shared by the panel and the menu bar, so the two always match.
 enum Indicator {
-    case needsYou, working, idle, failing, changesRequested
+    case needsYou, working, idle, passing, failing, changesRequested
 
     var symbol: String {
         switch self {
         case .needsYou: return "circle.lefthalf.filled"
         case .working: return "circle.fill"
         case .idle: return "circle"
+        case .passing: return "checkmark.circle.fill"
         case .failing: return "xmark.circle.fill"
         case .changesRequested: return "pencil.circle.fill"
         }
@@ -98,7 +99,7 @@ enum Indicator {
     var nsColor: NSColor {
         switch self {
         case .needsYou, .changesRequested: return .systemOrange
-        case .working: return .systemGreen
+        case .working, .passing: return .systemGreen
         case .idle: return .tertiaryLabelColor
         case .failing: return .systemRed
         }
@@ -107,7 +108,7 @@ enum Indicator {
     var color: Color { Color(nsColor: nsColor) }
 
     /// Symbols with a glyph inside the circle (✗, pencil), which needs a second color to show.
-    var hasGlyph: Bool { self == .failing || self == .changesRequested }
+    var hasGlyph: Bool { self == .passing || self == .failing || self == .changesRequested }
 
     init(_ state: AgentState) {
         switch state {
@@ -197,7 +198,7 @@ private struct PRRow: View {
 
     @ViewBuilder private var ciIcon: some View {
         switch pr.ci {
-        case .passing: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        case .passing: Image(systemName: Indicator.passing.symbol).foregroundStyle(Indicator.passing.color)
         case .failing: Image(systemName: Indicator.failing.symbol).foregroundStyle(Indicator.failing.color)
         case .pending: Image(systemName: "clock.fill").foregroundStyle(.yellow)
         case .none: Image(systemName: "circle.dashed").foregroundStyle(.tertiary)
