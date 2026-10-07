@@ -11,6 +11,7 @@ struct PanelView: View {
     @AppStorage("tab") private var tab: Tab = .mine
     /// Section ids the user folded away, comma-separated.
     @AppStorage("collapsedSections") private var collapsed = ""
+    @AppStorage(keepPanelOpenKey) private var keepOpen = false
     @State private var contentHeight: CGFloat = 0
 
     private let maxHeight: CGFloat = 600
@@ -130,6 +131,8 @@ struct PanelView: View {
                     } else {
                         Toggle("Open at Login", isOn: Binding(get: { store.openAtLogin }, set: { store.setOpenAtLogin($0) }))
                     }
+                    // Stays above other apps when you click them; the menu bar icon or Esc closes it.
+                    Toggle("Keep Panel on Top", isOn: $keepOpen)
                     Divider()
                     Button("Quit PRBar") { NSApp.terminate(nil) }
                 } label: {

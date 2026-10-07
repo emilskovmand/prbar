@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+/// UserDefaults key for the gear menu's "Keep Panel on Top": the panel then stays open when you
+/// click another app, until you close it from the menu bar icon or with Esc.
+let keepPanelOpenKey = "keepPanelOpen"
+
 /// A borderless panel placed under the menu bar icon when opened. Unlike NSPopover it is not
 /// anchored to the icon, so it stays put when an auto-hiding menu bar slides away.
 final class FloatingPanel<Content: View>: NSPanel {
@@ -32,6 +36,7 @@ final class FloatingPanel<Content: View>: NSPanel {
             DispatchQueue.main.async { self?.fit(to: host.preferredContentSize) }
         }
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard !Self.keepOpen else { return }
             self?.hide()
         })
     }
@@ -65,9 +70,12 @@ final class FloatingPanel<Content: View>: NSPanel {
 
         // A click in any other app closes the panel, like a popover.
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard !Self.keepOpen else { return }
             self?.hide()
         }
     }
+
+    private static var keepOpen: Bool { UserDefaults.standard.bool(forKey: keepPanelOpenKey) }
 
     func hide() {
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
