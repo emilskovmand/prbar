@@ -30,18 +30,30 @@ final class Updater: ObservableObject {
     }
 
     func check() {
-        var req = URLRequest(url: tagsURL)
-        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        req.timeoutInterval = 20
-        URLSession.shared.dataTask(with: req) { [weak self] data, response, _ in
-            guard (response as? HTTPURLResponse)?.statusCode == 200, let data,
-                  let tags = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
-            let newest = tags
-                .compactMap { $0["name"] as? String }
-                .compactMap { name in Version(name).map { (name, $0) } }
-                .max { $0.1 < $1.1 }
-            DispatchQueue.main.async { self?.latest = newest.map { String($0.0.drop { $0 == "v" }) } }
-        }.resume()
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            // A logged-in gh gets GitHub's per-user rate limit. Plain requests share 60 an hour with
+            // everything else on the network, which an office network can use up.
+            if let data = try? Shell.run(["gh", "api", "repos/emilskovmand/prbar/tags?per_page=100"], timeout: 20) {
+                self?.apply(tags: data)
+                return
+            }
+            var req = URLRequest(url: self?.tagsURL ?? URL(fileURLWithPath: "/"))
+            req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            req.timeoutInterval = 20
+            URLSession.shared.dataTask(with: req) { data, response, _ in
+                guard (response as? HTTPURLResponse)?.statusCode == 200, let data else { return }
+                self?.apply(tags: data)
+            }.resume()
+        }
+    }
+
+    private func apply(tags data: Data) {
+        guard let tags = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+        let newest = tags
+            .compactMap { $0["name"] as? String }
+            .compactMap { name in Version(name).map { (name, $0) } }
+            .max { $0.1 < $1.1 }
+        DispatchQueue.main.async { self.latest = newest.map { String($0.0.drop { $0 == "v" }) } }
     }
 
     /// Homebrew installs upgrade in place; other builds get the release page.
