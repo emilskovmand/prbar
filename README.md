@@ -1,6 +1,6 @@
 # PRBar
 
-A macOS menu bar app that shows your open GitHub PRs together with the Claude Code agents working on them, local and cloud, live.
+A macOS menu bar app that shows your open GitHub PRs together with the AI agents working on them (Claude Code CLI, Claude Desktop, IDE and cloud sessions, and Codex), live.
 
 ```
 ◐1 ⇅3 ⇅2 ✗1           ← menu bar: ready (green PR icon), drafts (grey PR icon), failing CI or conflicts, plus ◐ when an agent needs you
@@ -24,7 +24,7 @@ PR rows only list what needs attention (failing or running checks, review state,
 
 The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI or with merge conflicts (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
 
-Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a Codex agent opens that chat in the Codex app; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
+Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a Codex agent opens that chat in the Codex app (part of ChatGPT.app, via a `codex://threads/<id>` link) and brings it to the front; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
 
 ## Data sources
 
@@ -43,12 +43,23 @@ The cloud sessions endpoint is internal to Claude Code, not a public API, so it 
 
 ```sh
 brew install emilskovmand/tap/prbar
-brew services start prbar   # start now and at login
+brew services start prbar   # start now and at every login
 ```
 
-Homebrew builds the app from source, which takes about a minute. It needs macOS 15+ and Xcode 16+ or its command line tools (`xcode-select --install`). Building locally avoids Gatekeeper blocking an unsigned download. You also need an authenticated `gh` CLI (`gh auth login`). Homebrew installs `gh` if it's missing.
+The formula lives in [emilskovmand/homebrew-tap](https://github.com/emilskovmand/homebrew-tap). It:
 
-To run it without the service: `open $(brew --prefix)/opt/prbar/PRBar.app`. Upgrade with `brew upgrade prbar && brew services restart prbar`.
+- builds the app from source (under a minute), so you need macOS 15+ and Xcode 16+ or its command line tools (`xcode-select --install`). The app isn't signed with an Apple developer certificate, so a downloaded copy would be blocked by Gatekeeper; a locally built one isn't.
+- installs `gh` if it's missing. Log it in with `gh auth login`; PRBar reads your PRs through it.
+- adds a `prbar` command, so `prbar --dump` works from any terminal.
+- sets up `brew services`, which starts PRBar at login. In a Homebrew install the gear menu's **Open at Login** is replaced by a button that copies `brew services start prbar`, because a login item would point at the versioned Cellar folder and break on upgrade.
+
+| Task | Command |
+| --- | --- |
+| Run once without the service | `open $(brew --prefix)/opt/prbar/PRBar.app` |
+| Upgrade | `brew upgrade prbar && brew services restart prbar` |
+| Stop and remove | `brew services stop prbar && brew uninstall prbar` |
+
+**Switching from a source build:** quit the copy in `~/Applications` (gear menu → Quit PRBar), turn off its **Open at Login** first if you enabled it, and delete `~/Applications/PRBar.app`. Otherwise you'll get two menu bar icons after a restart.
 
 ## Build from source
 
@@ -60,6 +71,22 @@ Requires macOS 15+, Xcode command line tools, and an authenticated `gh` CLI.
 ```
 
 When built this way, enable **Open at Login** from the gear menu in the panel to start it automatically.
+
+## Releasing
+
+Homebrew installs a tagged release, so changes on `main` reach brew users only after a new tag and a formula update:
+
+1. Tag and push: `git tag v0.1.2 && git push origin v0.1.2`
+2. Get the checksum of the tag's archive:
+   ```sh
+   curl -sL https://github.com/emilskovmand/prbar/archive/refs/tags/v0.1.2.tar.gz | shasum -a 256
+   ```
+3. In [homebrew-tap](https://github.com/emilskovmand/homebrew-tap), update `url` and `sha256` in `Formula/prbar.rb`, then commit and push.
+4. Users run `brew upgrade prbar && brew services restart prbar`.
+
+Always use a new tag; don't move an existing one. GitHub caches tag archives, so a moved tag keeps serving the old code and its old checksum.
+
+`brew install --HEAD emilskovmand/tap/prbar` builds the latest `main` without a release.
 
 ## Debugging
 
