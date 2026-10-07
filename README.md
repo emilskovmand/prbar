@@ -39,7 +39,18 @@ Agents are linked to PRs in this order: the PR the session itself linked (`pr-li
 
 The cloud sessions endpoint is internal to Claude Code, not a public API, so it may change between versions. If it breaks, the panel shows a `Cloud:` warning and everything else keeps working.
 
-## Build & install
+## Install
+
+```sh
+brew install emilskovmand/tap/prbar
+brew services start prbar   # start now and at login
+```
+
+Homebrew builds the app from source, which takes about a minute. It needs macOS 15+ and Xcode 16+ or its command line tools (`xcode-select --install`). Building locally avoids Gatekeeper blocking an unsigned download. You also need an authenticated `gh` CLI (`gh auth login`). Homebrew installs `gh` if it's missing.
+
+To run it without the service: `open $(brew --prefix)/opt/prbar/PRBar.app`. Upgrade with `brew upgrade prbar && brew services restart prbar`.
+
+## Build from source
 
 Requires macOS 15+, Xcode command line tools, and an authenticated `gh` CLI.
 
@@ -48,7 +59,7 @@ Requires macOS 15+, Xcode command line tools, and an authenticated `gh` CLI.
 ./scripts/build-app.sh --install  # copies to ~/Applications and launches it
 ```
 
-Enable **Open at Login** from the gear menu in the panel to start it automatically.
+When built this way, enable **Open at Login** from the gear menu in the panel to start it automatically.
 
 ## Debugging
 

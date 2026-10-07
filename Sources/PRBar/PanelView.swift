@@ -65,7 +65,15 @@ struct PanelView: View {
                     .keyboardShortcut("r")
                     .help("Refresh now (⌘R)")
                 Menu {
-                    Toggle("Open at Login", isOn: Binding(get: { store.openAtLogin }, set: { store.setOpenAtLogin($0) }))
+                    if isHomebrewInstall {
+                        // A login item would point into the versioned Cellar path; brew services survives upgrades.
+                        Button("Copy “brew services start prbar” (open at login)") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("brew services start prbar", forType: .string)
+                        }
+                    } else {
+                        Toggle("Open at Login", isOn: Binding(get: { store.openAtLogin }, set: { store.setOpenAtLogin($0) }))
+                    }
                     Divider()
                     Button("Quit PRBar") { NSApp.terminate(nil) }
                 } label: {
@@ -304,6 +312,8 @@ private struct ErrorLine: View {
             .lineLimit(2)
     }
 }
+
+let isHomebrewInstall = Bundle.main.bundlePath.contains("/Cellar/") || Bundle.main.bundlePath.contains("/opt/prbar/")
 
 /// Opens the link without bringing the browser to the front, so the panel keeps focus.
 func openInBackground(_ url: URL) {
