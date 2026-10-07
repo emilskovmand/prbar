@@ -13,6 +13,9 @@ struct PullRequest {
     let checksPassed: Int
     let checksFailed: Int
     let checksPending: Int
+    var author = ""
+    var createdAt: Date? = nil
+    var lastCommitAt: Date? = nil
 
     enum CI { case passing, failing, pending, none }
 
@@ -24,6 +27,23 @@ struct PullRequest {
     }
 
     var key: String { "\(repo)#\(number)" }
+}
+
+/// Someone else's PR in your review queue.
+struct ReviewPR: Identifiable {
+    let pr: PullRequest
+    /// When your review was last requested.
+    let requestedAt: Date?
+    /// Your latest review: APPROVED, CHANGES_REQUESTED, COMMENTED…
+    let myReview: String?
+    let myReviewAt: Date?
+
+    var id: String { pr.key }
+
+    var hasNewCommits: Bool {
+        guard let commit = pr.lastCommitAt, let review = myReviewAt else { return false }
+        return commit > review
+    }
 }
 
 enum AgentState: Int, Comparable {

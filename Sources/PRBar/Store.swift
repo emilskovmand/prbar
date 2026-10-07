@@ -25,9 +25,13 @@ final class Store: ObservableObject {
     @Published private(set) var ready: [Row] = []
     @Published private(set) var drafts: [Row] = []
     @Published private(set) var agents: [LinkedAgent] = []
+    /// Other people's PRs waiting for your review, and ones you reviewed that got new commits since.
+    @Published private(set) var reviewRequested: [ReviewPR] = []
+    @Published private(set) var reviewUpdated: [ReviewPR] = []
     @Published private(set) var counts = Counts()
     @Published private(set) var githubError: String?
     @Published private(set) var cloudError: String?
+    @Published private(set) var reviewError: String?
     @Published private(set) var githubUpdated: Date?
     @Published private(set) var openAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -103,6 +107,7 @@ final class Store: ObservableObject {
         githubInFlight = true
         githubQueue.async { [weak self] in
             let result = Result { try GitHub.fetchOpenPRs() }
+            let review = Result { try GitHub.fetchReviewQueue() }
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.githubInFlight = false
@@ -110,8 +115,19 @@ final class Store: ObservableObject {
                 case .success(let prs): self.prs = prs; self.githubError = nil; self.githubUpdated = Date()
                 case .failure(let e): self.githubError = "\(e)"
                 }
+                self.setReview(review)
                 self.publish()
             }
+        }
+    }
+
+    private func setReview(_ result: Result<(requested: [ReviewPR], updated: [ReviewPR]), Error>) {
+        switch result {
+        case .success(let queue):
+            reviewRequested = queue.requested
+            reviewUpdated = queue.updated
+            reviewError = nil
+        case .failure(let e): reviewError = "\(e)"
         }
     }
 
@@ -240,6 +256,7 @@ final class Store: ObservableObject {
         codexAgents = codex.poll()
         history = sessionHistory.poll() + codex.history()
         do { prs = try GitHub.fetchOpenPRs(); githubUpdated = Date() } catch { githubError = "\(error)" }
+        setReview(Result { try GitHub.fetchReviewQueue() })
         do { cloudAgents = try cloud.poll() } catch { cloudError = "\(error)" }
         publish()
     }
@@ -251,6 +268,10 @@ final class Store: ObservableObject {
         for row in ready + drafts {
             let pr = row.pr
             print("#\(pr.number) ci=\(pr.ci) review=\(pr.reviewDecision ?? "-") threads=\(pr.unresolvedThreads) \(pr.mergeable) draft=\(pr.isDraft) agents=\(row.agents.map { "\($0.state)" }) latest=\(row.latestChat.map { "[\($0.source)\($0.running ? " running" : "")] \($0.name) \(relativeTime($0.lastActivity))" } ?? "-")")
+        }
+        print("-- review: \(reviewError ?? "ok")")
+        for r in reviewRequested + reviewUpdated {
+            print("  \(r.pr.repo)#\(r.pr.number) by \(r.pr.author) requested=\(relativeTime(r.requestedAt)) mine=\(r.myReview ?? "-") newCommits=\(r.hasNewCommits) \(r.pr.title)")
         }
         print("-- agents")
         for a in agents {

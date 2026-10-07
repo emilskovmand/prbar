@@ -5,26 +5,36 @@ A macOS menu bar app that shows your open GitHub PRs together with the AI agents
 ```
 ◐1 ⇅3 ⇅2 ✗1           ← menu bar: ready (green PR icon), drafts (grey PR icon), failing CI or conflicts, plus ◐ when an agent needs you
 ─────────────────────────────────────────────
-READY FOR REVIEW                            2
-✗  Fix flaky sync job                    #101
-   1 failing · conflicts
-✓  Rollover handling                ◐    #103
-   changes requested
-DRAFTS                                      1
-✓  Add merchant logos               ●    #102
-AGENTS                                      3
-◐  Rollover handling     needs you · #103 · Cloud · 3m
-●  Merchant logos          working · #102 · CLI · 12s
-○  Explain Prisma SQL output          Codex · 1h
+PRBar                          [Mine | Review 2]
+⌄ Ready for review                          2
+✗  Fix flaky sync job                  [Chat]
+   #101 ● 1 failing ● Conflicts
+✓  Rollover handling                   [Chat]
+   #103 ● Changes requested ● Agent needs you
+─────────────────────────────────────────────
+⌄ Drafts                                    1
+✓  Add merchant logos
+   #102 ● Agent working
+─────────────────────────────────────────────
+⌄ Agents                                    3
+◉  Rollover handling                needs you
+   #103 · Cloud · 3m
+◉  Merchant logos                     Working
+   #102 · CLI · 12s
+○  Explain Prisma SQL output               1h
+   Codex
+─────────────────────────────────────────────
+Updated 12s ago                          ↻  ⚙
 ```
-
 PRs are split into **Ready for review** and **Drafts**. Within each section they're sorted by what needs attention: agents waiting on you, then failing CI or conflicts, then review feedback, then in-progress work, then quiet PRs. 
 
-PR rows only list what needs attention (failing or running checks, review state, unresolved threads, conflicts). A dot next to the PR number shows when an agent on it is working (●) or needs you (◐).
+PR rows list what needs attention under the title: failing or running checks, conflicts, changes requested, unresolved threads, and whether an agent on it is working or needs you. A PR with nothing in the way says **Ready to merge** (or **Awaiting review** while a required review is missing). Click a section heading to fold it; PRBar remembers which ones you folded.
+
+The **Review** tab lists other people's open PRs: **Requested from you** (with how long the request has waited, orange after a day) and **Updated since your review** (PRs you reviewed that got new commits since, tagged with your review). Each row shows CI, the author's initials and the PR's age. The badge on the tab counts pending review requests.
 
 The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI or with merge conflicts (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
 
-The 💬 button on a PR opens the most recent agent chat that worked on it, running or finished, in the app it was started in:
+The **Chat** button on a PR opens the most recent agent chat that worked on it, running or finished, in the app it was started in:
 
 | Latest chat | Opens |
 | --- | --- |
@@ -38,16 +48,17 @@ The 💬 button on a PR opens the most recent agent chat that worked on it, runn
 
 Finished chats come from Claude Code transcripts and Codex threads of the last 14 days. They're linked to a PR by the PR the session opened or linked, or by the ticket id in its worktree folder or title. The checked-out branch isn't used for finished chats, because in a shared checkout it only says what happened to be checked out.
 
-Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking an agent in the Agents section opens its chat the same way as the 💬 button (see the table above). The panel closes on Esc or a click outside.
+Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking an agent in the Agents section opens its chat the same way as the **Chat** button (see the table above). The panel closes on Esc or a click outside.
 
 ## Data sources
 
 | What | Where it comes from | Refresh |
 | --- | --- | --- |
 | Open PRs, CI checks, review state, unresolved threads | `gh api graphql` (`viewer.pullRequests`, all repos) | 45s, and right after any local agent finishes a turn |
+| Review tab | `gh api graphql` searches: `review-requested:@me` and `reviewed-by:@me -author:@me` (open, non-draft), with your latest review compared against the last commit | Same as above |
 | Local Claude Code sessions (CLI, Desktop, IDE) | `~/.claude/sessions/<pid>.json` (live status) plus incremental tail of each session's transcript (`pr-link`, `ai-title`, `last-prompt`, recaps) | 3s |
 | Codex threads (CLI and desktop app) | `~/.codex/state_*.sqlite` `threads` table, plus the task events at the end of each rollout log. Claude Code sessions Codex imported (listed in `external_agent_session_imports.json`) and Codex sub-agents are skipped. Idle threads are shown only while Codex is running. | 5s |
-| Finished chats, for the 💬 button | Claude Code transcripts in `~/.claude/projects` modified in the last 14 days (re-read only when they change), and Codex threads from the same period | 60s |
+| Finished chats, for the Chat button | Claude Code transcripts in `~/.claude/projects` modified in the last 14 days (re-read only when they change), and Codex threads from the same period | 60s |
 | Cloud Claude Code sessions | `api.anthropic.com/v1/code/sessions`, using the `claude` CLI's login from the keychain (read only; never refreshed here). Remote Control (`bridge`) sessions are skipped: they're local sessions mirrored to claude.ai and unreachable once that machine's session ends. A cloud session waiting for input counts as "needs you" only for 24 hours. | 30s |
 
 Agents are linked to PRs in this order: the PR the session itself linked (`pr-link` / "PR #123" in a cloud summary), then the git branch of the session's working directory or the cloud session's branch, then the ticket id (`bli-1637`) in the worktree name or branch.
