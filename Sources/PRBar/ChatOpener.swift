@@ -8,7 +8,7 @@ enum ChatOpener {
     static func destination(for agent: Agent) -> String {
         switch agent.kind {
         case .codex: return "Opens in Codex"
-        case .cloud: return "Opens on claude.ai"
+        case .cloud: return usesClaudeDesktop ? "Opens in Claude Desktop" : "Opens on claude.ai"
         case .local:
             if agent.running { return agent.hostApp?.lastPathComponent == "Claude.app" ? "Opens in Claude Desktop" : "Switches to its terminal tab" }
             return agent.source == "Desktop" ? "Opens in Claude Desktop" : "Resumes in a new terminal window"
@@ -17,6 +17,9 @@ enum ChatOpener {
 
     static func open(_ agent: Agent) {
         switch agent.kind {
+        case .cloud where usesClaudeDesktop:
+            // Desktop routes claude://claude.ai/code/<id> to the session's Code view.
+            if let url = URL(string: "claude://claude.ai/code/\(agent.id)") { NSWorkspace.shared.open(url) }
         case .codex, .cloud:
             if let url = agent.openURL { NSWorkspace.shared.open(url) }
         case .local:
@@ -29,6 +32,13 @@ enum ChatOpener {
                 resumeInTerminal(agent)
             }
         }
+    }
+
+    /// Claude Desktop is installed and has been used on this Mac (it creates its data folder on first run).
+    static var usesClaudeDesktop: Bool {
+        guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.anthropic.claudefordesktop") != nil else { return false }
+        let data = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support/Claude")
+        return FileManager.default.fileExists(atPath: data.path)
     }
 
     // MARK: Running sessions

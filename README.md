@@ -34,7 +34,7 @@ The 💬 button on a PR opens the most recent agent chat that worked on it, runn
 | Claude Code, finished, started in Claude Desktop | Claude Desktop, via `claude://resume?session=<id>` |
 | Claude Desktop session, running | Claude Desktop |
 | Codex | That thread in Codex (`codex://threads/<id>`) |
-| Cloud | The session on claude.ai |
+| Cloud | Claude Desktop (via `claude://claude.ai/code/<id>`) if you use it, otherwise the session on claude.ai. "Uses Claude Desktop" means Claude.app is installed and has been opened at least once (`~/Library/Application Support/Claude` exists). |
 
 Finished chats come from Claude Code transcripts and Codex threads of the last 14 days. They're linked to a PR by the PR the session opened or linked, or by the ticket id in its worktree folder or title. The checked-out branch isn't used for finished chats, because in a shared checkout it only says what happened to be checked out.
 
