@@ -15,20 +15,47 @@ if CommandLine.arguments.contains("--dump") {
     exit(0)
 }
 
+/// Renders the panel to a PNG at 2x, the way it looks in `appearance`.
+func renderPanel(to path: String, appearance: NSAppearance.Name? = nil, rounded: Bool = false, settle: TimeInterval) throws {
+    let panel = PanelView(store: delegate.store, updater: delegate.updater)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: rounded ? 12 : 0, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: rounded ? 12 : 0, style: .continuous).strokeBorder(Color.primary.opacity(rounded ? 0.15 : 0)))
+    let view = NSHostingView(rootView: panel)
+    if let appearance { view.appearance = NSAppearance(named: appearance) }
+    view.frame.size = view.fittingSize
+    view.layoutSubtreeIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(settle))  // let async work and the content height settle
+    view.frame.size = view.fittingSize
+    view.layoutSubtreeIfNeeded()
+    guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+    view.cacheDisplay(in: view.bounds, to: rep)
+    try rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+}
+
+if let i = CommandLine.arguments.firstIndex(of: "--demo-screenshots"), i + 1 < CommandLine.arguments.count {
+    // `PRBar --demo-screenshots docs`: the README images, both tabs in dark and light, from made-up data.
+    let dir = CommandLine.arguments[i + 1]
+    let defaults = UserDefaults.standard
+    let saved = (defaults.string(forKey: "tab"), defaults.string(forKey: "collapsedSections"))
+    defaults.removeObject(forKey: "collapsedSections")
+    delegate.store.loadDemo()
+    for tab in ["mine", "review"] {
+        defaults.set(tab, forKey: "tab")
+        for (name, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
+            try renderPanel(to: "\(dir)/panel-\(tab)-\(name).png", appearance: appearance, rounded: true, settle: 0.5)
+        }
+    }
+    defaults.set(saved.0, forKey: "tab")
+    defaults.set(saved.1, forKey: "collapsedSections")
+    exit(0)
+}
+
 if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
     // Render the panel to a PNG, for checking the layout without clicking the menu bar.
     delegate.store.loadOnce()
     delegate.updater.check()
-    let view = NSHostingView(rootView: PanelView(store: delegate.store, updater: delegate.updater).background(Color(nsColor: .windowBackgroundColor)))
-    view.frame.size = view.fittingSize
-    view.layoutSubtreeIfNeeded()
-    RunLoop.main.run(until: Date().addingTimeInterval(3))  // let the update check and content height settle
-    view.frame.size = view.fittingSize
-    view.layoutSubtreeIfNeeded()
-    if let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
-        view.cacheDisplay(in: view.bounds, to: rep)
-        try rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
-    }
+    try renderPanel(to: CommandLine.arguments[i + 1], settle: 3)
 
     // The menu bar title too, on a dark strip like the menu bar.
     let (title, _) = AppDelegate.title(for: delegate.store.counts)

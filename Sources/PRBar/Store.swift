@@ -261,6 +261,19 @@ final class Store: ObservableObject {
         publish()
     }
 
+    /// Fills the panel with the made-up data in `Demo`, for the README screenshots.
+    func loadDemo() {
+        prs = Demo.prs
+        localAgents = Demo.localAgents
+        cloudAgents = Demo.cloudAgents
+        codexAgents = Demo.codexAgents
+        history = []
+        reviewRequested = Demo.reviewRequested
+        reviewUpdated = Demo.reviewUpdated
+        githubUpdated = Date(timeIntervalSinceNow: -12)
+        publish()
+    }
+
     /// `PRBar --dump`: poll every source once and print what the panel would show.
     func dump() {
         loadOnce()

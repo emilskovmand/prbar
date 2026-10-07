@@ -308,15 +308,20 @@ private struct PRLines: View {
                 .truncationMode(.tail)
             HStack(spacing: 7) {
                 Text(verbatim: "#\(pr.number)").monospacedDigit().foregroundStyle(.secondary)
-                ForEach(tags, id: \.self) { tag in
-                    if let color = tag.color {
-                        HStack(spacing: 4) {
-                            Circle().fill(color).frame(width: 5, height: 5)
-                            Text(tag.text).foregroundStyle(color)
+                    .fixedSize()
+                // Earlier tags matter more, so when space runs out the last ones shorten first.
+                ForEach(Array(tags.enumerated()), id: \.element) { i, tag in
+                    Group {
+                        if let color = tag.color {
+                            HStack(spacing: 4) {
+                                Circle().fill(color).frame(width: 5, height: 5)
+                                Text(tag.text).foregroundStyle(color)
+                            }
+                        } else {
+                            Text(tag.text).foregroundStyle(.secondary)
                         }
-                    } else {
-                        Text(tag.text).foregroundStyle(.secondary)
                     }
+                    .layoutPriority(Double(tags.count - i))
                 }
             }
             .font(.system(size: 11))

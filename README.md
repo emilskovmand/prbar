@@ -2,30 +2,19 @@
 
 A macOS menu bar app that shows your open GitHub PRs together with the AI agents working on them (Claude Code CLI, Claude Desktop, IDE and cloud sessions, and Codex), live.
 
-```
-◐1 ⇅3 ⇅2 ✗1           ← menu bar: ready (green PR icon), drafts (grey PR icon), failing CI or conflicts, plus ◐ when an agent needs you
-─────────────────────────────────────────────
-PRBar                          [Mine | Review 2]
-⌄ Ready for review                          2
-✗  Fix flaky sync job                  [Chat]
-   #101 ● 1 failing ● Conflicts
-✓  Rollover handling                   [Chat]
-   #103 ● Changes requested ● Agent needs you
-─────────────────────────────────────────────
-⌄ Drafts                                    1
-✓  Add merchant logos
-   #102 ● Agent working
-─────────────────────────────────────────────
-⌄ Agents                                    3
-◉  Rollover handling                needs you
-   #103 · Cloud · 3m
-◉  Merchant logos                     Working
-   #102 · CLI · 12s
-○  Explain Prisma SQL output               1h
-   Codex
-─────────────────────────────────────────────
-Updated 12s ago                          ↻  ⚙
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/panel-mine-dark.png">
+    <img src="docs/panel-mine-light.png" width="400" alt="The PRBar panel's Mine tab: your PRs ready for review and drafts, each with CI status and tags like Changes requested or Ready to merge, and the agents working on them">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/panel-review-dark.png">
+    <img src="docs/panel-review-light.png" width="400" alt="The PRBar panel's Review tab: PRs requesting your review and PRs with new commits since your review">
+  </picture>
+</p>
+
+The menu bar shows counts with the same icons: PRs ready for review (green), drafts (grey), PRs failing CI or with conflicts (✗), and ◐ when an agent needs you.
+
 PRs are split into **Ready for review** and **Drafts**. Within each section they're sorted by what needs attention: agents waiting on you, then failing CI or conflicts, then review feedback, then in-progress work, then quiet PRs. 
 
 PR rows list what needs attention under the title: failing or running checks, conflicts, changes requested, unresolved threads, and whether an agent on it is working or needs you. A PR with nothing in the way says **Ready to merge** (or **Awaiting review** while a required review is missing). Click a section heading to fold it; PRBar remembers which ones you folded.
@@ -128,4 +117,4 @@ Always use a new tag; don't move an existing one. GitHub caches tag archives, so
 swift build -c release && .build/release/PRBar --dump
 ```
 
-This polls every source once and prints what the panel would show. `PRBar --snapshot out.png` renders the panel to an image.
+This polls every source once and prints what the panel would show. `PRBar --snapshot out.png` renders the panel to an image. `PRBar --demo-screenshots docs` renders the README screenshots (both tabs, dark and light) from the made-up PRs in `Sources/PRBar/Demo.swift`.
