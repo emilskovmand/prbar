@@ -30,34 +30,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Same symbols and colors as the panel, counting exactly what the panel lists.
     private func renderTitle() {
-        let c = store.counts
+        let (title, tip) = Self.title(for: store.counts)
+        statusItem.button?.attributedTitle = title
+        statusItem.button?.toolTip = tip
+    }
+
+    /// Same symbols and colors as the panel, counting exactly what the panel lists.
+    static func title(for c: Store.Counts) -> (NSAttributedString, String) {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
         let title = NSMutableAttributedString()
-        func add(_ indicator: Indicator, _ count: Int, _ label: String, into tips: inout [String]) {
+        var tips: [String] = []
+
+        func add(_ indicator: Indicator, _ count: Int, _ one: String, _ many: String) {
             guard count > 0 else { return }
-            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
-                .applying(.init(paletteColors: [indicator.nsColor]))
-            if let image = NSImage(systemSymbolName: indicator.symbol, accessibilityDescription: label)?
+            // Two palette colors, so the ✗ or pencil inside the circle stays visible like in the panel;
+            // with one color the whole symbol fills in and reads as a plain dot.
+            let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+                .applying(.init(paletteColors: indicator.hasGlyph ? [.white, indicator.nsColor] : [indicator.nsColor]))
+            if let image = NSImage(systemSymbolName: indicator.symbol, accessibilityDescription: one)?
                 .withSymbolConfiguration(config) {
                 image.isTemplate = false
                 let attachment = NSTextAttachment()
                 attachment.image = image
-                attachment.bounds = NSRect(x: 0, y: -1.5, width: image.size.width, height: image.size.height)
-                title.append(NSAttributedString(string: title.length > 0 ? "  " : " "))
+                attachment.bounds = NSRect(x: 0, y: -2.5, width: image.size.width, height: image.size.height)
+                title.append(NSAttributedString(string: title.length > 0 ? "   " : " "))
                 title.append(NSAttributedString(attachment: attachment))
             }
-            title.append(NSAttributedString(string: "\u{2009}\(count)", attributes: [.font: barFont]))
-            tips.append("\(count) \(label)")
+            title.append(NSAttributedString(string: " \(count)", attributes: [.font: font]))
+            tips.append("\(count) \(count == 1 ? one : many)")
         }
-        var tips: [String] = []
-        add(.needsYou, c.needsYou, c.needsYou == 1 ? "agent needs you" : "agents need you", into: &tips)
-        add(.working, c.working, c.working == 1 ? "agent working" : "agents working", into: &tips)
-        add(.failing, c.failing, c.failing == 1 ? "PR failing CI" : "PRs failing CI", into: &tips)
-        add(.changesRequested, c.changesRequested, c.changesRequested == 1 ? "PR with changes requested" : "PRs with changes requested", into: &tips)
-        statusItem.button?.attributedTitle = title
-        statusItem.button?.toolTip = tips.isEmpty ? "PRBar" : tips.joined(separator: "\n")
+        add(.needsYou, c.needsYou, "agent needs you", "agents need you")
+        add(.working, c.working, "agent working", "agents working")
+        add(.failing, c.failing, "PR failing CI", "PRs failing CI")
+        add(.changesRequested, c.changesRequested, "PR with changes requested", "PRs with changes requested")
+        return (title, tips.isEmpty ? "PRBar" : tips.joined(separator: "\n"))
     }
-
-    private let barFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
 }

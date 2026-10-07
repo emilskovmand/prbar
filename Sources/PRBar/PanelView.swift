@@ -106,6 +106,9 @@ enum Indicator {
 
     var color: Color { Color(nsColor: nsColor) }
 
+    /// Symbols with a glyph inside the circle (✗, pencil), which needs a second color to show.
+    var hasGlyph: Bool { self == .failing || self == .changesRequested }
+
     init(_ state: AgentState) {
         switch state {
         case .needsYou: self = .needsYou
