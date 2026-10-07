@@ -24,7 +24,7 @@ PR rows only list what needs attention (failing or running checks, review state,
 
 The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI or with merge conflicts (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
 
-Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
+Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a Codex agent opens that chat in the Codex app; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
 
 ## Data sources
 

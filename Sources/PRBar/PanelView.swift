@@ -284,13 +284,17 @@ private struct AgentRow: View {
     }
 
     private var hint: String? {
+        if agent.kind == .codex, agent.openURL != nil { return "Click to open in Codex" }
         if agent.openURL != nil { return "Click to open in claude.ai" }
         if agent.resumeCommand != nil { return "Click to copy the resume command" }
         return nil
     }
 
     private func activate() {
-        if let url = agent.openURL {
+        if let url = agent.openURL, agent.kind == .codex {
+            // Jumping to a Codex chat means switching to Codex, so bring it to the front.
+            NSWorkspace.shared.open(url)
+        } else if let url = agent.openURL {
             openInBackground(url)
         } else if let cmd = agent.resumeCommand {
             NSPasteboard.general.clearContents()

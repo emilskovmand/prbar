@@ -38,7 +38,8 @@ final class CodexAgents {
                 prNumber: nil,
                 branches: t.branch.map { [$0] } ?? [],
                 ticket: ticketID(in: (t.cwd as NSString).lastPathComponent) ?? t.branch.flatMap(ticketID(in:)),
-                openURL: nil,
+                // Opens the thread in the Codex app (part of ChatGPT.app).
+                openURL: URL(string: "codex://threads/\(t.id)"),
                 resumeCommand: "cd \(shellQuote(t.cwd)) && codex resume \(t.id)"
             )
         }
