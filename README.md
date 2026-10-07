@@ -3,7 +3,7 @@
 A macOS menu bar app that shows your open GitHub PRs together with the Claude Code agents working on them, local and cloud, live.
 
 ```
-◐1 ⇅3 ⇅2 ✗1           ← menu bar: ready (green PR icon), drafts (grey PR icon), failing CI, plus ◐ when an agent needs you
+◐1 ⇅3 ⇅2 ✗1           ← menu bar: ready (green PR icon), drafts (grey PR icon), failing CI or conflicts, plus ◐ when an agent needs you
 ─────────────────────────────────────────────
 READY FOR REVIEW                            2
 ✗  Fix flaky sync job                    #101
@@ -22,7 +22,7 @@ PRs are split into **Ready for review** and **Drafts**. Within each section they
 
 PR rows only list what needs attention (failing or running checks, review state, unresolved threads, conflicts). A dot next to the PR number shows when an agent on it is working (●) or needs you (◐).
 
-The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
+The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI or with merge conflicts (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
 
 Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
 

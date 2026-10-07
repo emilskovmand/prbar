@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         add(.needsYou, c.needsYou, "agent needs you", "agents need you")
         add(.ready, c.ready, "PR ready for review", "PRs ready for review")
         add(.draft, c.drafts, "draft PR", "draft PRs")
-        add(.failing, c.failing, "PR failing CI", "PRs failing CI")
+        add(.failing, c.failing, "PR failing CI or with conflicts", "PRs failing CI or with conflicts")
         return (title, tips.isEmpty ? "PRBar" : tips.joined(separator: "\n"))
     }
 }

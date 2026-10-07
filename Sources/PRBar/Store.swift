@@ -143,7 +143,8 @@ final class Store: ObservableObject {
             needsYou: agents.filter { $0.agent.state == .needsYou }.count,
             ready: ready.count,
             drafts: drafts.count,
-            failing: prs.filter { $0.ci == .failing }.count
+            // Red in the panel: a red ✗ for failing CI or red "conflicts" text.
+            failing: prs.filter { $0.ci == .failing || $0.mergeable == "CONFLICTING" }.count
         )
         onChange?()
     }
