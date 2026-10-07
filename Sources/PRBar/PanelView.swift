@@ -74,6 +74,10 @@ struct PanelView: View {
                     } else {
                         Toggle("Open at Login", isOn: Binding(get: { store.openAtLogin }, set: { store.setOpenAtLogin($0) }))
                     }
+                    Toggle("Open finished Claude chats in Claude Desktop", isOn: Binding(
+                        get: { store.preferDesktop },
+                        set: { store.preferDesktop = $0 }
+                    ))
                     Divider()
                     Button("Quit PRBar") { NSApp.terminate(nil) }
                 } label: {
@@ -196,6 +200,7 @@ private struct PRRow: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer(minLength: 4)
+                    if let chat = row.latestChat { ChatButton(agent: chat) }
                     if let agentIndicator {
                         Image(systemName: agentIndicator.symbol)
                             .font(.system(size: 8))
@@ -239,6 +244,44 @@ private struct PRRow: View {
         return parts.dropFirst()
             .reduce(first) { $0 + Text(" · ") + $1 }
             .foregroundColor(.secondary)
+    }
+}
+
+/// Opens the most recent agent chat on a PR, wherever it lives.
+private struct ChatButton: View {
+    let agent: Agent
+    @State private var hovered = false
+
+    var body: some View {
+        Button { ChatOpener.open(agent) } label: {
+            Image(systemName: "text.bubble")
+                .font(.callout)
+                .foregroundStyle(hovered ? .primary : .secondary)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1)
+                .background(RoundedRectangle(cornerRadius: 4).fill(hovered ? Color.primary.opacity(0.1) : .clear))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help("Open latest chat: \(agent.name)\n\(agent.source)\(stateText) · \(relativeTime(agent.lastActivity)) ago\n\(destination)")
+    }
+
+    private var stateText: String {
+        switch agent.state {
+        case .working: return ", working"
+        case .needsYou: return ", needs you"
+        case .idle: return ""
+        }
+    }
+
+    private var destination: String {
+        switch agent.kind {
+        case .codex: return "Opens in Codex"
+        case .cloud: return "Opens on claude.ai"
+        case .local:
+            if agent.running { return "Switches to its terminal tab" }
+            return agent.source == "Desktop" || ChatOpener.preferDesktop ? "Opens in Claude Desktop" : "Resumes in a new terminal window"
+        }
     }
 }
 

@@ -45,6 +45,23 @@ final class CodexAgents {
         }
     }
 
+    /// Threads from the last two weeks, for opening the latest chat on a PR. State isn't read here.
+    func history() -> [Agent] {
+        guard let db = openDatabase() else { return [] }
+        defer { sqlite3_close(db) }
+        return threads(db, updatedSince: Date().addingTimeInterval(-14 * 86400), limit: 200).map { t in
+            Agent(
+                id: t.id, kind: .codex, source: "Codex", name: t.title, state: .idle, detail: nil,
+                lastActivity: t.updated, prRepo: nil, prNumber: nil,
+                // Not the branch: it's whatever the checkout had then, not necessarily what the thread worked on.
+                branches: [],
+                ticket: ticketID(in: (t.cwd as NSString).lastPathComponent) ?? ticketID(in: t.title),
+                openURL: URL(string: "codex://threads/\(t.id)"),
+                resumeCommand: nil, running: false, cwd: t.cwd
+            )
+        }
+    }
+
     // MARK: State database
 
     private func openDatabase() -> OpaquePointer? {
@@ -65,17 +82,17 @@ final class CodexAgents {
         return db
     }
 
-    private func threads(_ db: OpaquePointer, updatedSince since: Date) -> [Thread] {
+    private func threads(_ db: OpaquePointer, updatedSince since: Date, limit: Int = 25) -> [Thread] {
         let sql = """
             SELECT id, rollout_path, cwd, COALESCE(NULLIF(name, ''), title), git_branch, updated_at_ms
             FROM threads
             WHERE archived = 0 AND updated_at_ms >= ?
-              -- Codex mirrors Claude Code sessions in here with no originator; those are already listed.
-              AND COALESCE(originator, '') != ''
+              -- Threads you started; Claude Code sessions Codex imports have no thread_source.
+              AND thread_source = 'user'
               -- Internal sub-agents (e.g. guardian reviews) belong to their parent thread.
               AND source NOT LIKE '{%'
             ORDER BY updated_at_ms DESC
-            LIMIT 25
+            LIMIT \(limit)
             """
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
@@ -85,9 +102,10 @@ final class CodexAgents {
         func text(_ i: Int32) -> String? {
             sqlite3_column_text(stmt, i).map { String(cString: $0) }
         }
+        let imported = importedThreadIDs()
         var result: [Thread] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
-            guard let id = text(0), let rollout = text(1) else { continue }
+            guard let id = text(0), let rollout = text(1), !imported.contains(id) else { continue }
             result.append(Thread(
                 id: id,
                 rolloutPath: rollout,
@@ -98,6 +116,19 @@ final class CodexAgents {
             ))
         }
         return result
+    }
+
+    private var importsCache: (modified: Date, ids: Set<String>)?
+
+    /// Claude Code sessions Codex Desktop imported as threads; they're already listed as Claude agents.
+    private func importedThreadIDs() -> Set<String> {
+        let url = codexDir.appendingPathComponent("external_agent_session_imports.json")
+        guard let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate else { return [] }
+        if let c = importsCache, c.modified == modified { return c.ids }
+        let records = ((try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any])?["records"] as? [[String: Any]] ?? []
+        let ids = Set(records.compactMap { $0["imported_thread_id"] as? String })
+        importsCache = (modified, ids)
+        return ids
     }
 
     // MARK: Rollout log

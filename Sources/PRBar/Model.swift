@@ -49,6 +49,12 @@ struct Agent {
     let ticket: String?        // e.g. "bli-1637"
     let openURL: URL?
     let resumeCommand: String?
+    // Used to open the chat: a running local session is focused in its terminal tab,
+    // an ended one is resumed in a new terminal window.
+    var running = true
+    var cwd: String? = nil
+    var tty: String? = nil          // e.g. /dev/ttys002
+    var hostApp: URL? = nil         // the app the session runs in (iTerm, Terminal, Cursor, Claude…)
 }
 
 /// Pulls a Linear-style ticket id ("bli-1637") out of a branch, path or title.

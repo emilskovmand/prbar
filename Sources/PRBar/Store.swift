@@ -6,6 +6,8 @@ final class Store: ObservableObject {
     struct Row: Identifiable {
         let pr: PullRequest
         let agents: [Agent]
+        /// The most recently active chat on this PR, running or ended, for the "open chat" button.
+        let latestChat: Agent?
         var id: String { pr.key }
     }
 
@@ -28,6 +30,9 @@ final class Store: ObservableObject {
     @Published private(set) var cloudError: String?
     @Published private(set) var githubUpdated: Date?
     @Published private(set) var openAtLogin = SMAppService.mainApp.status == .enabled
+    @Published var preferDesktop = ChatOpener.preferDesktop {
+        didSet { ChatOpener.preferDesktop = preferDesktop }
+    }
 
     /// Called on the main thread after every update, for the menu bar title.
     var onChange: (() -> Void)?
@@ -36,14 +41,17 @@ final class Store: ObservableObject {
     private(set) var localAgents: [Agent] = []
     private(set) var cloudAgents: [Agent] = []
     private(set) var codexAgents: [Agent] = []
+    private var history: [Agent] = []
 
     private let local = LocalAgents()
     private let cloud = CloudAgents()
     private let codex = CodexAgents()
+    private let sessionHistory = SessionHistory()
     private let localQueue = DispatchQueue(label: "prbar.local")
     private let githubQueue = DispatchQueue(label: "prbar.github")
     private let cloudQueue = DispatchQueue(label: "prbar.cloud")
     private let codexQueue = DispatchQueue(label: "prbar.codex")
+    private let historyQueue = DispatchQueue(label: "prbar.history")
     private var githubInFlight = false
     private var timers: [Timer] = []
 
@@ -52,6 +60,7 @@ final class Store: ObservableObject {
         schedule(every: 45) { [weak self] in self?.refreshGitHub() }
         schedule(every: 30) { [weak self] in self?.refreshCloud() }
         schedule(every: 5) { [weak self] in self?.refreshCodex() }
+        schedule(every: 60) { [weak self] in self?.refreshHistory() }
     }
 
     func refreshAll() {
@@ -134,6 +143,17 @@ final class Store: ObservableObject {
         }
     }
 
+    private func refreshHistory() {
+        historyQueue.async { [weak self] in
+            guard let self else { return }
+            let past = self.sessionHistory.poll() + self.codex.history()
+            DispatchQueue.main.async {
+                self.history = past
+                self.publish()
+            }
+        }
+    }
+
     private func publish() {
         let rows = link()
         ready = rows.filter { !$0.pr.isDraft }
@@ -158,12 +178,25 @@ final class Store: ObservableObject {
     // MARK: Linking
 
     func link() -> [Row] {
+        let live = visibleAgents()
         var byPR: [String: [Agent]] = [:]
-        for agent in visibleAgents() {
+        for agent in live {
             if let pr = match(agent) { byPR[pr.key, default: []].append(agent) }
         }
+        // Past chats, skipping any that are running (the live entry knows its terminal tab).
+        let liveIDs = Set(live.map(\.id))
+        var pastByPR: [String: [Agent]] = [:]
+        for agent in history where !liveIDs.contains(agent.id) {
+            if let pr = match(agent) { pastByPR[pr.key, default: []].append(agent) }
+        }
 
-        let rows = prs.map { Row(pr: $0, agents: sortAgents(byPR[$0.key] ?? [])) }
+        let rows = prs.map { pr in
+            let agents = byPR[pr.key] ?? []
+            let latest = (agents + (pastByPR[pr.key] ?? [])).max {
+                ($0.lastActivity ?? .distantPast) < ($1.lastActivity ?? .distantPast)
+            }
+            return Row(pr: pr, agents: sortAgents(agents), latestChat: latest)
+        }
             .enumerated()
             .sorted { a, b in
                 let (pa, pb) = (priority(a.element), priority(b.element))
@@ -208,6 +241,7 @@ final class Store: ObservableObject {
     func loadOnce() {
         localAgents = local.poll()
         codexAgents = codex.poll()
+        history = sessionHistory.poll() + codex.history()
         do { prs = try GitHub.fetchOpenPRs(); githubUpdated = Date() } catch { githubError = "\(error)" }
         do { cloudAgents = try cloud.poll() } catch { cloudError = "\(error)" }
         publish()
@@ -219,7 +253,7 @@ final class Store: ObservableObject {
         print("counts: \(counts)")
         for row in ready + drafts {
             let pr = row.pr
-            print("#\(pr.number) ci=\(pr.ci) review=\(pr.reviewDecision ?? "-") threads=\(pr.unresolvedThreads) \(pr.mergeable) draft=\(pr.isDraft) agents=\(row.agents.map { "\($0.state)" })")
+            print("#\(pr.number) ci=\(pr.ci) review=\(pr.reviewDecision ?? "-") threads=\(pr.unresolvedThreads) \(pr.mergeable) draft=\(pr.isDraft) agents=\(row.agents.map { "\($0.state)" }) latest=\(row.latestChat.map { "[\($0.source)\($0.running ? " running" : "")] \($0.name) \(relativeTime($0.lastActivity))" } ?? "-")")
         }
         print("-- agents")
         for a in agents {

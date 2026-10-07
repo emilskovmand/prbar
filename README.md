@@ -24,6 +24,19 @@ PR rows only list what needs attention (failing or running checks, review state,
 
 The **Agents** section lists every running agent (Claude Code CLI, Claude Desktop, IDE, Codex, and recent cloud sessions), with the PR it's on. Hover one to see its last prompt or recap. The menu bar counts PRs ready for review (green pull-request icon) and drafts (grey pull-request icon), the same icons as the panel's section headers, plus PRs failing CI or with merge conflicts (✗) and ◐ when an agent is waiting on you. Working agents are only shown in the panel, so the menu bar only changes when your PRs do. Hover it for a legend.
 
+The 💬 button on a PR opens the most recent agent chat that worked on it, running or finished:
+
+| Latest chat | Opens |
+| --- | --- |
+| Claude Code, running in iTerm2 or Terminal | Switches to its tab (first use asks for Automation permission) |
+| Claude Code, running in another app (Cursor, VS Code…) | Brings that app forward |
+| Claude Code, finished | Claude Desktop, via `claude://resume?session=<id>`, which imports the transcript into its Code tab. Turn off **Open finished Claude chats in Claude Desktop** in the gear menu to resume it with `claude --resume` in a new iTerm2 (or Terminal) window instead. |
+| Claude Desktop session | Claude Desktop |
+| Codex | That thread in Codex (`codex://threads/<id>`) |
+| Cloud | The session on claude.ai |
+
+Finished chats come from Claude Code transcripts and Codex threads of the last 14 days. They're linked to a PR by the PR the session opened or linked, or by the ticket id in its worktree folder or title. The checked-out branch isn't used for finished chats, because in a shared checkout it only says what happened to be checked out.
+
 Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the background, so the panel stays open and you can open several in a row. Clicking a cloud agent opens it on claude.ai; clicking a Codex agent opens that chat in the Codex app (part of ChatGPT.app, via a `codex://threads/<id>` link) and brings it to the front; clicking a local agent copies a `claude --resume` command for it. The panel closes on Esc or a click outside.
 
 ## Data sources
@@ -32,7 +45,8 @@ Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the backgro
 | --- | --- | --- |
 | Open PRs, CI checks, review state, unresolved threads | `gh api graphql` (`viewer.pullRequests`, all repos) | 45s, and right after any local agent finishes a turn |
 | Local Claude Code sessions (CLI, Desktop, IDE) | `~/.claude/sessions/<pid>.json` (live status) plus incremental tail of each session's transcript (`pr-link`, `ai-title`, `last-prompt`, recaps) | 3s |
-| Codex threads (CLI and desktop app) | `~/.codex/state_*.sqlite` `threads` table, plus the task events at the end of each rollout log. Claude Code sessions Codex mirrors and Codex sub-agents are skipped. Idle threads are shown only while Codex is running. | 5s |
+| Codex threads (CLI and desktop app) | `~/.codex/state_*.sqlite` `threads` table, plus the task events at the end of each rollout log. Claude Code sessions Codex imported (listed in `external_agent_session_imports.json`) and Codex sub-agents are skipped. Idle threads are shown only while Codex is running. | 5s |
+| Finished chats, for the 💬 button | Claude Code transcripts in `~/.claude/projects` modified in the last 14 days (re-read only when they change), and Codex threads from the same period | 60s |
 | Cloud Claude Code sessions | `api.anthropic.com/v1/code/sessions`, using the `claude` CLI's login from the keychain (read only; never refreshed here) | 30s |
 
 Agents are linked to PRs in this order: the PR the session itself linked (`pr-link` / "PR #123" in a cloud summary), then the git branch of the session's working directory or the cloud session's branch, then the ticket id (`bli-1637`) in the worktree name or branch.

@@ -20,6 +20,7 @@ final class LocalAgents {
 
     private var transcripts: [String: TranscriptState] = [:]
     private var branchCache: [String: (branch: String?, at: Date)] = [:]
+    private var hostCache: [Int32: (tty: String?, app: URL?)] = [:]
 
     private struct SessionFile: Decodable {
         let pid: Int32
@@ -37,17 +38,21 @@ final class LocalAgents {
         let files = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
         var agents: [Agent] = []
         var seen = Set<String>()
+        var seenPids = Set<Int32>()
 
         for file in files where file.pathExtension == "json" {
             guard let data = try? Data(contentsOf: file),
                   let s = try? JSONDecoder().decode(SessionFile.self, from: data),
                   isAlive(s.pid) else { continue }
             seen.insert(s.sessionId)
+            seenPids.insert(s.pid)
 
             let t = updateTranscript(for: s.sessionId)
             let cwd = t?.cwd ?? s.cwd
             let branch = currentBranch(in: cwd)
             let statusAt = s.statusUpdatedAt.map { Date(timeIntervalSince1970: $0 / 1000) }
+            let host = hostCache[s.pid] ?? Self.host(of: s.pid)
+            hostCache[s.pid] = host
 
             agents.append(Agent(
                 id: s.sessionId,
@@ -62,10 +67,14 @@ final class LocalAgents {
                 branches: branch.map { [$0] } ?? [],
                 ticket: ticketID(in: (cwd as NSString).lastPathComponent) ?? branch.flatMap(ticketID(in:)),
                 openURL: nil,
-                resumeCommand: "cd \(shellQuote(cwd)) && claude --resume \(s.sessionId)"
+                resumeCommand: "cd \(shellQuote(cwd)) && claude --resume \(s.sessionId)",
+                cwd: cwd,
+                tty: host.tty,
+                hostApp: host.app
             ))
         }
         transcripts = transcripts.filter { seen.contains($0.key) }
+        hostCache = hostCache.filter { seenPids.contains($0.key) }
         return agents
     }
 
@@ -86,6 +95,27 @@ final class LocalAgents {
         case "idle", nil: return .idle
         default: return .needsYou   // needs_input, waiting, blocked, permission…
         }
+    }
+
+    /// The session's terminal device and the outermost app among its ancestors (iTerm, Cursor, Claude…).
+    private static func host(of pid: Int32) -> (tty: String?, app: URL?) {
+        func ps(_ field: String, _ pid: Int32) -> String? {
+            (try? Shell.run(["ps", "-o", "\(field)=", "-p", "\(pid)"], timeout: 3))
+                .flatMap { String(data: $0, encoding: .utf8) }?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let tty = ps("tty", pid).flatMap { $0.isEmpty || $0 == "??" ? nil : "/dev/" + $0 }
+
+        var app: URL?
+        var current = pid
+        for _ in 0..<12 {
+            guard let parent = ps("ppid", current).flatMap({ Int32($0) }), parent > 1 else { break }
+            if let comm = ps("comm", parent), let r = comm.range(of: ".app/") {
+                app = URL(fileURLWithPath: String(comm[..<r.lowerBound]) + ".app")
+            }
+            current = parent
+        }
+        return (tty, app)
     }
 
     private func isAlive(_ pid: Int32) -> Bool {
