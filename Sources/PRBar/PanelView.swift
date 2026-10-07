@@ -364,7 +364,7 @@ private struct PRRow: View {
             Spacer(minLength: 6)
             if let chat = row.latestChat { ChatButton(agent: chat) }
         }
-        .modifier(RowButton { openInBackground(pr.url) })
+        .modifier(RowButton { Browser.open(pr.url) })
         .help(([pr.repo + " · " + pr.headRef, pr.title] + row.agents.map { "\($0.source) agent: \($0.name)" })
             .joined(separator: "\n"))
     }
@@ -415,7 +415,7 @@ private struct ReviewRow: View {
             }
             .padding(.top, 1)
         }
-        .modifier(RowButton { openInBackground(pr.url) })
+        .modifier(RowButton { Browser.open(pr.url) })
         .help("\(pr.repo) · @\(pr.author) · opened \(relativeTime(pr.createdAt)) ago\n\(pr.title)")
     }
 

@@ -19,7 +19,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>15.0</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>PRBar switches to the iTerm or Terminal tab where an agent's chat is running, or opens a new window to resume it.</string>
+    <string>PRBar switches to the iTerm or Terminal tab where an agent's chat is running, or opens a new window to resume it. It also switches to a browser tab that already shows a PR you open.</string>
     <key>LSUIElement</key>
     <true/>
 </dict>
