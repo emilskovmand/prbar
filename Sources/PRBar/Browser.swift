@@ -11,11 +11,18 @@ enum Browser {
     ]
     private static let queue = DispatchQueue(label: "prbar.browser")
 
-    /// Like a new tab, this leaves the browser in the background, so the panel stays open.
-    static func open(_ url: URL) {
+    /// Like a new tab, this leaves the browser in the background, so the panel stays open,
+    /// unless `activate` brings it forward (for a click on a notification, where there's no panel).
+    static func open(_ url: URL, activate: Bool = false) {
         queue.async {
-            if !selectExistingTab(url) {
-                DispatchQueue.main.async { openInBackground(url) }
+            let found = selectExistingTab(url)
+            DispatchQueue.main.async {
+                if !found {
+                    if activate { NSWorkspace.shared.open(url) } else { openInBackground(url) }
+                } else if activate, let app = NSWorkspace.shared.urlForApplication(toOpen: url),
+                          let id = Bundle(url: app)?.bundleIdentifier {
+                    NSRunningApplication.runningApplications(withBundleIdentifier: id).first?.activate()
+                }
             }
         }
     }

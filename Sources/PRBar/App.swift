@@ -4,6 +4,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = Store()
     let updater = Updater()
+    private lazy var notifier = Notifier(store: store)
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private lazy var panel = FloatingPanel(rootView: PanelView(store: store, updater: updater))
 
@@ -17,7 +18,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.action = #selector(togglePanel)
         }
 
-        store.onChange = { [weak self] in self?.renderTitle() }
+        store.onChange = { [weak self] in
+            self?.renderTitle()
+            self?.notifier.update()
+        }
+        notifier.start()
         store.start()
         updater.start()
         renderTitle()

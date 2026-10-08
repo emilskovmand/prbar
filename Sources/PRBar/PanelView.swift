@@ -12,6 +12,7 @@ struct PanelView: View {
     /// Section ids the user folded away, comma-separated.
     @AppStorage("collapsedSections") private var collapsed = ""
     @AppStorage(keepPanelOpenKey) private var keepOpen = false
+    @AppStorage(notificationsEnabledKey) private var notificationsOn = true
     @State private var contentHeight: CGFloat = 0
 
     private let maxHeight: CGFloat = 600
@@ -141,6 +142,14 @@ struct PanelView: View {
                     // Stays above other apps when you click them; the menu bar icon or Esc closes it.
                     Toggle("Keep Panel on Top", isOn: $keepOpen)
                     Divider()
+                    Toggle("Notifications", isOn: $notificationsOn)
+                    Menu("Notify Me When") {
+                        ForEach(Notifier.Kind.allCases) { NotificationToggle(kind: $0) }
+                        Divider()
+                        Button("Notification Settings…") { openNotificationSettings() }
+                    }
+                    .disabled(!notificationsOn)
+                    Divider()
                     Button("Quit PRBar") { NSApp.terminate(nil) }
                 } label: {
                     Image(systemName: "gearshape")
@@ -154,6 +163,19 @@ struct PanelView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
     }
+}
+
+/// One kind of notification in the gear menu, on or off.
+private struct NotificationToggle: View {
+    let kind: Notifier.Kind
+    @AppStorage private var on: Bool
+
+    init(kind: Notifier.Kind) {
+        self.kind = kind
+        _on = AppStorage(wrappedValue: kind.defaultOn, kind.key)
+    }
+
+    var body: some View { Toggle(kind.label, isOn: $on) }
 }
 
 /// The symbols and colors shared by the panel and the menu bar, so the two always match.
