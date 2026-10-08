@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 /// Reads running Claude Code sessions from ~/.claude/sessions/<pid>.json and
 /// follows each session's transcript incrementally for PR links and context.
@@ -99,8 +99,13 @@ final class LocalAgents {
         var current = pid
         for _ in 0..<12 {
             guard let parent = ps("ppid", current).flatMap({ Int32($0) }), parent > 1 else { break }
-            if let comm = ps("comm", parent), let r = comm.range(of: ".app/") {
+            let comm = ps("comm", parent) ?? ""
+            if let r = comm.range(of: ".app/") {
                 app = URL(fileURLWithPath: String(comm[..<r.lowerBound]) + ".app")
+            } else if comm.contains("/iTerm2/iTermServer") {
+                // iTerm runs its shells under a server in Application Support, parented to launchd,
+                // so the walk never reaches iTerm.app itself.
+                app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.googlecode.iterm2")
             }
             current = parent
         }
