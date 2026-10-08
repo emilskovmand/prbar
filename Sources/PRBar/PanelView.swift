@@ -563,7 +563,7 @@ private struct AgentRow: View {
             trailing.font(.system(size: 11, weight: idle ? .regular : .medium)).padding(.top, 1)
         }
         .modifier(RowButton { ChatOpener.open(agent) })
-        .help([agent.name, agent.detail, agent.cwd.map { "In " + abbreviatingHome($0) }, ChatOpener.destination(for: agent)]
+        .help([agent.name, agent.detail, agent.cwd.map { (agent.worktree == nil ? "In " : "In worktree ") + abbreviatingHome($0) }, ChatOpener.destination(for: agent)]
             .compactMap { $0 }.joined(separator: "\n\n"))
     }
 
@@ -579,13 +579,13 @@ private struct AgentRow: View {
         }
     }
 
-    /// "#973 · CLI · 📁 bli-1599"; active agents add their time here, since the right side says what they're doing.
+    /// "#973 · CLI · ⑂ worktree bli-1599"; active agents add their time here, since the right side says what they're doing.
     private var subtitle: Text {
         var parts = [linked.pr.map { "#\($0.number)" }, agent.source].compactMap { $0 }
         if !idle { parts.append(relativeTime(agent.lastActivity)) }
         let text = parts.joined(separator: " · ")
         guard let worktree = agent.worktree else { return Text(text) }
-        return Text("\(text) · \(Image(systemName: "folder")) \(worktree)")
+        return Text("\(text) · \(Image(systemName: "arrow.triangle.branch")) worktree \(worktree)")
     }
 
     @ViewBuilder private var trailing: some View {
