@@ -125,7 +125,13 @@ struct PanelView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button { store.refreshAll(); updater.check() } label: { Image(systemName: "arrow.clockwise") }
+                Button { store.refreshAll(); updater.check() } label: {
+                    if store.refreshing {
+                        ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "arrow.clockwise").frame(width: 16, height: 16)
+                    }
+                }
                     .buttonStyle(.borderless)
                     .keyboardShortcut("r")
                     .help("Refresh now (⌘R)")

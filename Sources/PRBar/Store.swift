@@ -33,6 +33,8 @@ final class Store: ObservableObject {
     @Published private(set) var cloudError: String?
     @Published private(set) var reviewError: String?
     @Published private(set) var githubUpdated: Date?
+    /// A refresh from the panel's button is running; it shows a spinner.
+    @Published private(set) var refreshing = false
     @Published private(set) var openAtLogin = SMAppService.mainApp.status == .enabled
 
     /// Called on the main thread after every update, for the menu bar title.
@@ -54,6 +56,7 @@ final class Store: ObservableObject {
     private let codexQueue = DispatchQueue(label: "prbar.codex")
     private let historyQueue = DispatchQueue(label: "prbar.history")
     private var githubInFlight = false
+    private var refreshStarted = Date.distantPast
     private var timers: [Timer] = []
 
     func start() {
@@ -65,6 +68,8 @@ final class Store: ObservableObject {
     }
 
     func refreshAll() {
+        refreshing = true
+        refreshStarted = Date()
         refreshLocal(); refreshGitHub(); refreshCloud(); refreshCodex()
     }
 
@@ -117,8 +122,17 @@ final class Store: ObservableObject {
                 }
                 self.setReview(review)
                 self.publish()
+                self.endRefreshing()
             }
         }
+    }
+
+    /// GitHub is the slowest source, so the spinner stops when it's back, but stays up long enough
+    /// to register as a response to the click.
+    private func endRefreshing() {
+        guard refreshing else { return }
+        let wait = max(0, 0.6 + refreshStarted.timeIntervalSinceNow)
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in self?.refreshing = false }
     }
 
     private func setReview(_ result: Result<(requested: [ReviewPR], updated: [ReviewPR]), Error>) {
