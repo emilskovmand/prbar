@@ -526,7 +526,7 @@ private struct ChatButton: View {
         .buttonStyle(.plain)
         .fixedSize()
         .onHover { hovered = $0 }
-        .help("Open latest chat: \(agent.name)\n\(agent.source)\(stateText) · \(relativeTime(agent.lastActivity)) ago\n\(ChatOpener.destination(for: agent))")
+        .help("Open latest chat: \(agent.name)\n\(agent.source)\(stateText) · \(relativeTime(agent.lastActivity)) ago\(agent.worktree.map { " · worktree \($0)" } ?? "")\n\(ChatOpener.destination(for: agent))")
     }
 
     private var stateText: String {
@@ -554,7 +554,7 @@ private struct AgentRow: View {
                     .foregroundStyle(idle ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(subtitle)
+                subtitle
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
@@ -563,7 +563,8 @@ private struct AgentRow: View {
             trailing.font(.system(size: 11, weight: idle ? .regular : .medium)).padding(.top, 1)
         }
         .modifier(RowButton { ChatOpener.open(agent) })
-        .help([agent.name, agent.detail, ChatOpener.destination(for: agent)].compactMap { $0 }.joined(separator: "\n\n"))
+        .help([agent.name, agent.detail, agent.cwd.map { "In " + abbreviatingHome($0) }, ChatOpener.destination(for: agent)]
+            .compactMap { $0 }.joined(separator: "\n\n"))
     }
 
     /// Working and waiting agents get a soft halo, so they stand out from the idle rings.
@@ -578,11 +579,13 @@ private struct AgentRow: View {
         }
     }
 
-    /// "#973 · CLI"; active agents add their time here, since the right side says what they're doing.
-    private var subtitle: String {
+    /// "#973 · CLI · 📁 bli-1599"; active agents add their time here, since the right side says what they're doing.
+    private var subtitle: Text {
         var parts = [linked.pr.map { "#\($0.number)" }, agent.source].compactMap { $0 }
         if !idle { parts.append(relativeTime(agent.lastActivity)) }
-        return parts.joined(separator: " · ")
+        let text = parts.joined(separator: " · ")
+        guard let worktree = agent.worktree else { return Text(text) }
+        return Text("\(text) · \(Image(systemName: "folder")) \(worktree)")
     }
 
     @ViewBuilder private var trailing: some View {
@@ -650,6 +653,11 @@ func openInBackground(_ url: URL) {
     let config = NSWorkspace.OpenConfiguration()
     config.activates = false
     NSWorkspace.shared.open(url, configuration: config)
+}
+
+/// "/Users/me/development/x" → "~/development/x".
+func abbreviatingHome(_ path: String) -> String {
+    (path as NSString).abbreviatingWithTildeInPath
 }
 
 /// Strips the "[staging] BLI-1637 |" prefix convention so the description is what shows.

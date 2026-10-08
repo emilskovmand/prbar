@@ -69,6 +69,7 @@ final class LocalAgents {
                 openURL: nil,
                 resumeCommand: "cd \(shellQuote(cwd)) && claude --resume \(s.sessionId)",
                 cwd: cwd,
+                worktree: worktreeName(containing: cwd),
                 tty: host.tty,
                 hostApp: host.app
             ))

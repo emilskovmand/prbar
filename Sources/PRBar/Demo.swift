@@ -28,15 +28,15 @@ enum Demo {
     ]
 
     private static func agent(_ kind: Agent.Kind, _ source: String, _ name: String, _ state: AgentState,
-                              ago: TimeInterval, pr: Int?) -> Agent {
+                              ago: TimeInterval, pr: Int?, worktree: String? = nil) -> Agent {
         Agent(id: name, kind: kind, source: source, name: name, state: state, detail: nil,
               lastActivity: Date(timeIntervalSinceNow: -ago), prRepo: pr == nil ? nil : repo, prNumber: pr,
-              branches: [], ticket: nil, openURL: nil, resumeCommand: nil)
+              branches: [], ticket: nil, openURL: nil, resumeCommand: nil, worktree: worktree)
     }
 
     static let localAgents = [
-        agent(.local, "CLI", "Fix flaky inventory sync", .working, ago: 12, pr: 418),
-        agent(.local, "Desktop", "Gift card balance API", .working, ago: 70, pr: 423),
+        agent(.local, "CLI", "Fix flaky inventory sync", .working, ago: 12, pr: 418, worktree: "inventory-sync"),
+        agent(.local, "Desktop", "Gift card balance API", .working, ago: 70, pr: 423, worktree: "gift-cards"),
         agent(.local, "CLI", "Explain the order state machine", .idle, ago: 5 * 3600, pr: nil),
     ]
     static let cloudAgents = [agent(.cloud, "Cloud", "Apple Pay checkout", .needsYou, ago: 180, pr: 412)]

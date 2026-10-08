@@ -40,7 +40,9 @@ final class CodexAgents {
                 ticket: ticketID(in: (t.cwd as NSString).lastPathComponent) ?? t.branch.flatMap(ticketID(in:)),
                 // Opens the thread in the Codex app (part of ChatGPT.app).
                 openURL: URL(string: "codex://threads/\(t.id)"),
-                resumeCommand: "cd \(shellQuote(t.cwd)) && codex resume \(t.id)"
+                resumeCommand: "cd \(shellQuote(t.cwd)) && codex resume \(t.id)",
+                cwd: t.cwd,
+                worktree: worktreeName(containing: t.cwd)
             )
         }
     }
@@ -57,7 +59,7 @@ final class CodexAgents {
                 branches: [],
                 ticket: ticketID(in: (t.cwd as NSString).lastPathComponent) ?? ticketID(in: t.title),
                 openURL: URL(string: "codex://threads/\(t.id)"),
-                resumeCommand: nil, running: false, cwd: t.cwd
+                resumeCommand: nil, running: false, cwd: t.cwd, worktree: worktreeName(containing: t.cwd)
             )
         }
     }

@@ -73,6 +73,7 @@ struct Agent {
     // an ended one is resumed in a new terminal window.
     var running = true
     var cwd: String? = nil
+    var worktree: String? = nil     // the git worktree folder the agent works in, e.g. "bli-1599"
     var tty: String? = nil          // e.g. /dev/ttys002
     var hostApp: URL? = nil         // the app the session runs in (iTerm, Terminal, Cursor, Claude…)
 }
@@ -81,6 +82,24 @@ struct Agent {
 func ticketID(in text: String) -> String? {
     guard let r = text.range(of: #"(?i)\b[a-z]{2,6}-\d{2,6}\b"#, options: .regularExpression) else { return nil }
     return text[r].lowercased()
+}
+
+/// The folder name of the linked git worktree that `path` is in ("…/.claude/worktrees/bli-1599" → "bli-1599"),
+/// or nil in a main checkout or outside git. A worktree's `.git` is a file pointing into the main
+/// checkout's `.git/worktrees/`; a submodule's `.git` file points into `.git/modules/` instead.
+func worktreeName(containing path: String) -> String? {
+    var dir = URL(fileURLWithPath: path).standardizedFileURL
+    while dir.path != "/" {
+        let git = dir.appendingPathComponent(".git")
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: git.path, isDirectory: &isDir) {
+            guard !isDir.boolValue, let link = try? String(contentsOf: git, encoding: .utf8),
+                  link.contains("/worktrees/") else { return nil }
+            return dir.lastPathComponent
+        }
+        dir.deleteLastPathComponent()
+    }
+    return nil
 }
 
 func relativeTime(_ date: Date?) -> String {

@@ -86,7 +86,8 @@ final class SessionHistory {
             openURL: nil,
             resumeCommand: "cd \(shellQuote(cwd)) && claude --resume \(sessionId)",
             running: false,
-            cwd: cwd
+            cwd: cwd,
+            worktree: worktreeName(containing: cwd)
         )
     }
 }
