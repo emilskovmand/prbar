@@ -57,9 +57,24 @@ final class Store: ObservableObject {
     private let historyQueue = DispatchQueue(label: "prbar.history")
     private var githubInFlight = false
     private var refreshStarted = Date.distantPast
+    private var menuOpen = false
+    private var publishPending = false
     private var timers: [Timer] = []
 
     func start() {
+        // SwiftUI updates an open Menu's items whenever the panel redraws, and that closes an open
+        // submenu (the gear menu's "Notify Me When"), so updates wait until the menu closes.
+        let center = NotificationCenter.default
+        // Only top-level menus count, so a submenu closing can't let updates through early.
+        center.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] n in
+            guard (n.object as? NSMenu)?.supermenu == nil else { return }
+            self?.menuOpen = true
+        }
+        center.addObserver(forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] n in
+            guard let self, (n.object as? NSMenu)?.supermenu == nil else { return }
+            self.menuOpen = false
+            if self.publishPending { self.publish() }
+        }
         schedule(every: 3) { [weak self] in self?.refreshLocal() }
         schedule(every: 45) { [weak self] in self?.refreshGitHub() }
         schedule(every: 30) { [weak self] in self?.refreshCloud() }
@@ -182,6 +197,8 @@ final class Store: ObservableObject {
     }
 
     private func publish() {
+        guard !menuOpen else { publishPending = true; return }
+        publishPending = false
         let rows = link()
         ready = rows.filter { !$0.pr.isDraft }
         drafts = rows.filter { $0.pr.isDraft }
