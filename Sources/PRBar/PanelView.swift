@@ -11,8 +11,6 @@ struct PanelView: View {
     @AppStorage("tab") private var tab: Tab = .mine
     /// Section ids the user folded away, comma-separated.
     @AppStorage("collapsedSections") private var collapsed = ""
-    @AppStorage(keepPanelOpenKey) private var keepOpen = false
-    @AppStorage(notificationsEnabledKey) private var notificationsOn = true
     @State private var contentHeight: CGFloat = 0
 
     private let maxHeight: CGFloat = 600
@@ -135,39 +133,60 @@ struct PanelView: View {
                     .buttonStyle(.borderless)
                     .keyboardShortcut("r")
                     .help("Refresh now (⌘R)")
-                Menu {
-                    if isHomebrewInstall {
-                        // A login item would point into the versioned Cellar path; brew services survives upgrades.
-                        Button("Copy “brew services start prbar” (open at login)") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString("brew services start prbar", forType: .string)
-                        }
-                    } else {
-                        Toggle("Open at Login", isOn: Binding(get: { store.openAtLogin }, set: { store.setOpenAtLogin($0) }))
-                    }
-                    // Stays above other apps when you click them; the menu bar icon or Esc closes it.
-                    Toggle("Keep Panel on Top", isOn: $keepOpen)
-                    Divider()
-                    Toggle("Notifications", isOn: $notificationsOn)
-                    Menu("Notify Me When") {
-                        ForEach(Notifier.Kind.allCases) { NotificationToggle(kind: $0) }
-                        Divider()
-                        Button("Notification Settings…") { openNotificationSettings() }
-                    }
-                    .disabled(!notificationsOn)
-                    Divider()
-                    Button("Quit PRBar") { NSApp.terminate(nil) }
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
+                GearMenu(store: store)
             }
             .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
+    }
+}
+
+/// The footer's settings menu. It doesn't observe the store, so the panel redrawing on every poll
+/// leaves it alone; when its items were rebuilt every few seconds, an open submenu closed.
+private struct GearMenu: View {
+    let store: Store
+    @AppStorage(keepPanelOpenKey) private var keepOpen = false
+    @AppStorage(notificationsEnabledKey) private var notificationsOn = true
+    @State private var openAtLogin: Bool
+
+    init(store: Store) {
+        self.store = store
+        _openAtLogin = State(initialValue: store.openAtLogin)
+    }
+
+    var body: some View {
+        Menu {
+            if isHomebrewInstall {
+                // A login item would point into the versioned Cellar path; brew services survives upgrades.
+                Button("Copy “brew services start prbar” (open at login)") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString("brew services start prbar", forType: .string)
+                }
+            } else {
+                Toggle("Open at Login", isOn: Binding(get: { openAtLogin }, set: {
+                    store.setOpenAtLogin($0)
+                    openAtLogin = store.openAtLogin
+                }))
+            }
+            // Stays above other apps when you click them; the menu bar icon or Esc closes it.
+            Toggle("Keep Panel on Top", isOn: $keepOpen)
+            Divider()
+            Toggle("Notifications", isOn: $notificationsOn)
+            Menu("Notify Me When") {
+                ForEach(Notifier.Kind.allCases) { NotificationToggle(kind: $0) }
+                Divider()
+                Button("Notification Settings…") { openNotificationSettings() }
+            }
+            .disabled(!notificationsOn)
+            Divider()
+            Button("Quit PRBar") { NSApp.terminate(nil) }
+        } label: {
+            Image(systemName: "gearshape")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
     }
 }
 
