@@ -36,6 +36,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     /// What the last update saw; nil until that source has loaded once, so startup stays quiet.
     private var agentStates: [String: AgentState] = [:]
     private var prs: [String: PullRequest]?
+    /// Each PR's last known MERGEABLE or CONFLICTING, by key.
+    private var mergeable: [String: String] = [:]
     private var requested: Set<String>?
     private var available = false
 
@@ -81,6 +83,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     private func checkPRs() {
         let now = Dictionary(store.prs.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
+        let knownBefore = mergeable
+        // GitHub answers UNKNOWN while it recomputes mergeability (e.g. on the first query in a while),
+        // so keep the last known answer, or a long-conflicting PR "gets" conflicts again on every launch.
+        mergeable = now.compactMapValues { $0.mergeable == "UNKNOWN" ? knownBefore[$0.key] : $0.mergeable }
         defer { prs = now }
         guard let before = prs else { return }
         for pr in store.prs {
@@ -91,7 +97,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             if pr.ci == .failing, old.ci != .failing {
                 broken.append(pr.checksFailed == 1 ? "1 check failing" : "\(pr.checksFailed) checks failing")
             }
-            if pr.mergeable == "CONFLICTING", old.mergeable != "CONFLICTING" { broken.append("Merge conflicts") }
+            if pr.mergeable == "CONFLICTING", knownBefore[pr.key] == "MERGEABLE" { broken.append("Merge conflicts") }
             if !broken.isEmpty, Kind.prBroken.isOn {
                 post(.prBroken, id: "broken-\(pr.key)", title: broken.joined(separator: ", "), subtitle: subtitle,
                      body: cleanTitle(pr.title), info: ["url": pr.url.absoluteString])
