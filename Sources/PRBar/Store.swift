@@ -261,7 +261,7 @@ final class Store: ObservableObject {
     }
 
     private func isRecent(_ agent: Agent) -> Bool {
-        agent.state == .working || (agent.lastActivity.map { -$0.timeIntervalSinceNow < 3 * 86400 } ?? false)
+        agent.state == .working || agent.state == .watching || (agent.lastActivity.map { -$0.timeIntervalSinceNow < 3 * 86400 } ?? false)
     }
 
     private func sortAgents(_ agents: [Agent]) -> [Agent] {
@@ -275,7 +275,7 @@ final class Store: ObservableObject {
         if row.agents.contains(where: { $0.state == .needsYou }) { return 0 }
         if row.pr.ci == .failing || row.pr.mergeable == "CONFLICTING" { return 1 }
         if row.pr.reviewDecision == "CHANGES_REQUESTED" || row.pr.unresolvedThreads > 0 { return 2 }
-        if row.agents.contains(where: { $0.state == .working }) { return 3 }
+        if row.agents.contains(where: { $0.state == .working || $0.state == .watching }) { return 3 }
         return 4
     }
 

@@ -73,7 +73,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             if agent.state == .needsYou, Kind.agentNeedsYou.isOn {
                 post(.agentNeedsYou, id: "agent-\(agent.id)", title: "Agent needs you", subtitle: context,
                      body: agent.name, info: ["agent": agent.id, "url": linked.pr?.url.absoluteString ?? ""])
-            } else if old == .working, agent.state == .idle, Kind.agentFinished.isOn {
+            } else if old == .working || old == .watching, agent.state == .idle, Kind.agentFinished.isOn {
                 post(.agentFinished, id: "agent-\(agent.id)", title: "Agent finished", subtitle: context,
                      body: agent.name, info: ["agent": agent.id, "url": linked.pr?.url.absoluteString ?? ""])
             }

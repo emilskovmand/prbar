@@ -87,8 +87,9 @@ final class LocalAgents {
 
     private static func state(for status: String?) -> AgentState {
         switch status {
-        // "shell": the turn ended with a background command running; the agent resumes when it exits.
-        case "busy", "shell": return .working
+        case "busy": return .working
+        // The turn ended with a background command running; the agent resumes when it exits.
+        case "shell": return .watching
         case "idle", nil: return .idle
         default: return .needsYou   // needs_input, waiting, blocked, permission…
         }

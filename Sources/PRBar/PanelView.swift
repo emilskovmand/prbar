@@ -186,12 +186,12 @@ private struct NotificationToggle: View {
 
 /// The symbols and colors shared by the panel and the menu bar, so the two always match.
 enum Indicator {
-    case needsYou, working, idle, passing, failing, ready, draft
+    case needsYou, working, watching, idle, passing, failing, ready, draft
 
     var symbol: String {
         switch self {
         case .needsYou: return "circle.lefthalf.filled"
-        case .working: return "circle.fill"
+        case .working, .watching: return "circle.fill"
         case .idle: return "circle"
         case .passing: return "checkmark.circle.fill"
         case .failing: return "xmark.circle.fill"
@@ -205,6 +205,7 @@ enum Indicator {
         case .ready: return .systemGreen
         case .draft: return .systemGray
         case .working, .passing: return .systemGreen
+        case .watching: return .systemBlue
         case .idle: return .tertiaryLabelColor
         case .failing: return .systemRed
         }
@@ -219,6 +220,7 @@ enum Indicator {
         switch state {
         case .needsYou: self = .needsYou
         case .working: self = .working
+        case .watching: self = .watching
         case .idle: self = .idle
         }
     }
@@ -424,6 +426,7 @@ private struct PRRow: View {
         switch row.agents.map(\.state).min() {
         case .needsYou: tags.append(Tag(text: "Agent needs you", color: Indicator.needsYou.color))
         case .working: tags.append(Tag(text: "Agent working", color: Indicator.working.color))
+        case .watching: tags.append(Tag(text: "Agent watching", color: Indicator.watching.color))
         default: break
         }
 
@@ -532,6 +535,7 @@ private struct ChatButton: View {
     private var stateText: String {
         switch agent.state {
         case .working: return ", working"
+        case .watching: return ", watching"
         case .needsYou: return ", needs you"
         case .idle: return ""
         }
@@ -591,6 +595,7 @@ private struct AgentRow: View {
     @ViewBuilder private var trailing: some View {
         switch agent.state {
         case .working: Text("Working").foregroundStyle(indicator.color)
+        case .watching: Text("Watching").foregroundStyle(indicator.color)
         case .needsYou: Text("Needs you").foregroundStyle(indicator.color)
         case .idle: Text(relativeTime(agent.lastActivity)).monospacedDigit().foregroundStyle(.tertiary)
         }

@@ -47,7 +47,7 @@ struct ReviewPR: Identifiable {
 }
 
 enum AgentState: Int, Comparable {
-    case needsYou = 0, working, idle
+    case needsYou = 0, working, watching, idle
 
     static func < (a: AgentState, b: AgentState) -> Bool { a.rawValue < b.rawValue }
 }
