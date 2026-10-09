@@ -31,6 +31,10 @@ final class LocalAgents {
         let kind: String?
         let entrypoint: String?
         let statusUpdatedAt: Double?
+        /// Set when the chat moved to a background job; this process is then just a shell.
+        let parkedJobId: String?
+        /// A pre-started background session nobody has used yet.
+        let spare: Bool?
     }
 
     func poll() -> [Agent] {
@@ -44,6 +48,8 @@ final class LocalAgents {
             guard let data = try? Data(contentsOf: file),
                   let s = try? JSONDecoder().decode(SessionFile.self, from: data),
                   isAlive(s.pid) else { continue }
+            // The job shows up as its own session, so these would only add a row that isn't a chat.
+            if s.parkedJobId != nil || s.spare == true { continue }
             seen.insert(s.sessionId)
             seenPids.insert(s.pid)
 
@@ -81,7 +87,8 @@ final class LocalAgents {
 
     private static func state(for status: String?) -> AgentState {
         switch status {
-        case "busy": return .working
+        // "shell": the turn ended with a background command running; the agent resumes when it exits.
+        case "busy", "shell": return .working
         case "idle", nil: return .idle
         default: return .needsYou   // needs_input, waiting, blocked, permission…
         }
