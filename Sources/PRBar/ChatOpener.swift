@@ -45,6 +45,8 @@ enum ChatOpener {
 
     private static func focusRunning(_ agent: Agent) {
         let app = agent.hostApp?.lastPathComponent
+        // Since macOS 14 an app may only activate itself when the active app yields to it.
+        if let id = agent.hostApp.flatMap({ Bundle(url: $0)?.bundleIdentifier }) { NSApp.yieldActivation(toApplicationWithBundleIdentifier: id) }
         if let tty = agent.tty, app == "iTerm.app", runAppleScript(iTermSelect(tty: tty)) { return }
         if let tty = agent.tty, app == "Terminal.app", runAppleScript(terminalSelect(tty: tty)) { return }
         if app == "Claude.app" { openInDesktop(agent); return }
@@ -52,24 +54,35 @@ enum ChatOpener {
         if let host = agent.hostApp { NSWorkspace.shared.open(host) }
     }
 
+    /// Activation finishes after the script, and iTerm then sometimes puts its previous window back in
+    /// front, so the tab is selected again until iTerm reports it as the current session.
     private static func iTermSelect(tty: String) -> String {
         """
         tell application "iTerm2"
-            repeat with w in windows
-                repeat with t in tabs of w
-                    repeat with s in sessions of t
-                        if tty of s is "\(escape(tty))" then
-                            select w
-                            select t
-                            select s
-                            activate
-                            return true
-                        end if
+            activate
+            repeat 10 times
+                set found to false
+                repeat with w in windows
+                    repeat with t in tabs of w
+                        repeat with s in sessions of t
+                            if tty of s is "\(escape(tty))" then
+                                select w
+                                select t
+                                select s
+                                set found to true
+                                exit repeat
+                            end if
+                        end repeat
+                        if found then exit repeat
                     end repeat
+                    if found then exit repeat
                 end repeat
+                if not found then return false
+                delay 0.1
+                if frontmost and tty of current session of current window is "\(escape(tty))" then return true
             end repeat
+            return true
         end tell
-        return false
         """
     }
 
