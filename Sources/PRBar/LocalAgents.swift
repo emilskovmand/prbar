@@ -128,7 +128,9 @@ final class LocalAgents {
     // MARK: Transcript tailing
 
     private func updateTranscript(for sessionId: String) -> TranscriptState? {
-        if transcripts[sessionId] == nil, let path = findTranscript(sessionId) {
+        // Entering a worktree moves the transcript to that worktree's project folder, so look again once it's gone.
+        let missing = transcripts[sessionId].map { !FileManager.default.fileExists(atPath: $0.path.path) } ?? true
+        if missing, let path = findTranscript(sessionId) {
             transcripts[sessionId] = TranscriptState(path: path)
         }
         guard var t = transcripts[sessionId],
