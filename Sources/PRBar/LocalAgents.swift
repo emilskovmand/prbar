@@ -55,7 +55,10 @@ final class LocalAgents {
 
             let t = updateTranscript(for: s.sessionId)
             let cwd = t?.cwd ?? s.cwd
-            let branch = currentBranch(in: cwd)
+            let worktree = worktreeName(containing: cwd)
+            // In a shared checkout the branch is whatever was last checked out there, which every
+            // session in it would otherwise claim; only a worktree's branch is the session's own.
+            let branch = worktree == nil ? nil : currentBranch(in: cwd)
             let statusAt = s.statusUpdatedAt.map { Date(timeIntervalSince1970: $0 / 1000) }
             let host = hostCache[s.pid] ?? Self.host(of: s.pid)
             hostCache[s.pid] = host
@@ -75,7 +78,7 @@ final class LocalAgents {
                 openURL: nil,
                 resumeCommand: "cd \(shellQuote(cwd)) && claude --resume \(s.sessionId)",
                 cwd: cwd,
-                worktree: worktreeName(containing: cwd),
+                worktree: worktree,
                 tty: host.tty,
                 hostApp: host.app
             ))
