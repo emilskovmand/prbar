@@ -340,9 +340,16 @@ private struct PRLines: View {
     let pr: PullRequest
     let tags: [Tag]
 
+    /// The ticket ids muted in front of the description.
+    private var title: Text {
+        let (tickets, description) = splitTitle(pr.title)
+        guard let tickets else { return Text(description) }
+        return Text(tickets + " ").foregroundColor(.secondary) + Text(description)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(cleanTitle(pr.title))
+            title
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -665,7 +672,20 @@ func abbreviatingHome(_ path: String) -> String {
     (path as NSString).abbreviatingWithTildeInPath
 }
 
-/// Strips the "[staging] BLI-1637 |" prefix convention so the description is what shows.
+/// Splits the "[staging] BLI-1873, BLI-1845 | description" convention into its ticket ids
+/// ("BLI-1873, BLI-1845") and the description, dropping the "[staging]" tag.
+func splitTitle(_ title: String) -> (tickets: String?, description: String) {
+    let pattern = #"^(?:\[[^\]]+\]\s*)?((?:[A-Z]+-\d+[,\s]*)*)\|\s*"#
+    guard let match = try? NSRegularExpression(pattern: pattern)
+            .firstMatch(in: title, range: NSRange(title.startIndex..., in: title)),
+          let ids = Range(match.range(at: 1), in: title),
+          let whole = Range(match.range, in: title) else { return (nil, title) }
+    let tickets = title[ids].trimmingCharacters(in: CharacterSet(charactersIn: ", "))
+    return (tickets.isEmpty ? nil : tickets, String(title[whole.upperBound...]))
+}
+
+/// "[staging] BLI-1637 | Fix it" → "BLI-1637 Fix it".
 func cleanTitle(_ title: String) -> String {
-    title.replacingOccurrences(of: #"^(\[[^\]]+\]\s*)?([A-Z]+-\d+\s*)*\|\s*"#, with: "", options: .regularExpression)
+    let (tickets, description) = splitTitle(title)
+    return [tickets, description].compactMap { $0 }.joined(separator: " ")
 }
