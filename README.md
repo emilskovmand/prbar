@@ -17,7 +17,7 @@ The menu bar shows counts with the same icons: PRs ready for review (green), dra
 
 PRs are split into **Ready for review** and **Drafts**. Within each section they're sorted by what needs attention: agents waiting on you, then failing CI or conflicts, then review feedback, then in-progress work, then quiet PRs. 
 
-PR rows list what needs attention under the title: failing or running checks, conflicts, changes requested, unresolved threads, and whether an agent on it is working or needs you. A PR with nothing in the way says **Ready to merge** (or **Awaiting review** while a required review is missing). Click a section heading to fold it; PRBar remembers which ones you folded.
+PR rows list what needs attention under the title: failing or running checks, conflicts, changes requested, unresolved threads, and whether an agent on it is working or needs you. A PR with nothing in the way says **Ready to merge** (or **Awaiting review** while a required review is missing). Below them, **Recently merged** lists your PRs merged in the last 3 days, newest first, with a purple merge icon and how long ago each merged, plus the Chat button for its latest chat. Click a section heading to fold it; PRBar remembers which ones you folded.
 
 The **Review** tab lists other people's open PRs: **Requested from you** (with how long the request has waited, orange after a day) and **Updated since your review** (PRs you reviewed that got new commits since, tagged with your review). Each row shows CI, the author's initials and the PR's age. The badge on the tab counts pending review requests.
 
@@ -45,7 +45,7 @@ Clicking the icon opens a panel. Clicking a PR opens it on GitHub in the backgro
 
 | What | Where it comes from | Refresh |
 | --- | --- | --- |
-| Open PRs, CI checks, review state, unresolved threads | `gh api graphql` (`viewer.pullRequests`, all repos) | 45s, and right after any local agent finishes a turn |
+| Open and recently merged PRs, CI checks, review state, unresolved threads | `gh api graphql` (`viewer.pullRequests`, all repos) | 45s, and right after any local agent finishes a turn |
 | Review tab | `gh api graphql` searches: `review-requested:@me` and `reviewed-by:@me -author:@me` (open, non-draft), with your latest review compared against the last commit | Same as above |
 | Local Claude Code sessions (CLI, Desktop, IDE) | `~/.claude/sessions/<pid>.json` (live status) plus incremental tail of each session's transcript (`pr-link`, `ai-title`, `last-prompt`, recaps) | 3s |
 | Codex threads (CLI and desktop app) | `~/.codex/state_*.sqlite` `threads` table, plus the task events at the end of each rollout log. Claude Code sessions Codex imported (listed in `external_agent_session_imports.json`) and Codex sub-agents are skipped. Idle threads are shown only while Codex is running. | 5s |

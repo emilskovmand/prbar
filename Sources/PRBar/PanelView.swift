@@ -62,7 +62,7 @@ struct PanelView: View {
     // MARK: Tabs
 
     @ViewBuilder private var mine: some View {
-        if store.ready.isEmpty && store.drafts.isEmpty {
+        if store.ready.isEmpty && store.drafts.isEmpty && store.merged.isEmpty {
             EmptyLine(text: store.githubUpdated == nil ? "Loading…" : "No open pull requests")
         }
         if !store.ready.isEmpty {
@@ -73,6 +73,11 @@ struct PanelView: View {
         if !store.drafts.isEmpty {
             section("drafts", "Drafts", store.drafts.count, divider: !store.ready.isEmpty) {
                 ForEach(store.drafts) { PRRow(row: $0) }
+            }
+        }
+        if !store.merged.isEmpty {
+            section("merged", "Recently merged", store.merged.count, divider: !store.ready.isEmpty || !store.drafts.isEmpty) {
+                ForEach(store.merged) { MergedRow(row: $0) }
             }
         }
         if !store.agents.isEmpty {
@@ -186,7 +191,7 @@ private struct NotificationToggle: View {
 
 /// The symbols and colors shared by the panel and the menu bar, so the two always match.
 enum Indicator {
-    case needsYou, working, watching, idle, passing, failing, ready, draft
+    case needsYou, working, watching, idle, passing, failing, ready, draft, merged
 
     var symbol: String {
         switch self {
@@ -196,6 +201,7 @@ enum Indicator {
         case .passing: return "checkmark.circle.fill"
         case .failing: return "xmark.circle.fill"
         case .ready, .draft: return "arrow.triangle.pull"
+        case .merged: return "arrow.triangle.merge"
         }
     }
 
@@ -204,6 +210,7 @@ enum Indicator {
         case .needsYou: return .systemOrange
         case .ready: return .systemGreen
         case .draft: return .systemGray
+        case .merged: return .systemPurple
         case .working, .passing: return .systemGreen
         case .watching: return .systemBlue
         case .idle: return .tertiaryLabelColor
@@ -445,6 +452,28 @@ private struct PRRow: View {
             }
         }
         return tags
+    }
+}
+
+/// One of your PRs merged in the last few days: a purple merge icon instead of CI, and when it merged.
+private struct MergedRow: View {
+    let row: Store.Row
+
+    private var pr: PullRequest { row.pr }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: Indicator.merged.symbol)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Indicator.merged.color)
+                .frame(width: 16)
+                .padding(.top, 1)
+            PRLines(pr: pr, tags: [Tag(text: "Merged \(relativeTime(pr.mergedAt)) ago")])
+            Spacer(minLength: 6)
+            if let chat = row.latestChat { ChatButton(agent: chat) }
+        }
+        .modifier(RowButton { Browser.open(pr.url) })
+        .help("\(pr.repo) · \(pr.headRef)\n\(pr.title)")
     }
 }
 

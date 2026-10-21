@@ -1,6 +1,6 @@
 import Foundation
 
-/// Fetches the viewer's open PRs and review queue across all repos with `gh api graphql`.
+/// Fetches the viewer's open and recently merged PRs and review queue across all repos with `gh api graphql`.
 enum GitHub {
     /// The fields every PR row needs, shared by your own PRs and the review queue.
     private static let fields = """
@@ -18,9 +18,15 @@ enum GitHub {
     """
 
     private static let query = """
-    query { viewer { pullRequests(states: OPEN, first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { ...pr } } } }
+    query { viewer {
+      open: pullRequests(states: OPEN, first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { ...pr } }
+      merged: pullRequests(states: MERGED, first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { ...pr mergedAt } }
+    } }
     \(fields)
     """
+
+    /// How long a merged PR stays in "Recently merged".
+    static let mergedWindow: TimeInterval = 3 * 86400
 
     /// Other people's PRs: the ones asking for your review, and the ones you reviewed that got new commits since.
     private static let reviewQuery = """
@@ -36,13 +42,21 @@ enum GitHub {
     \(fields)
     """
 
-    static func fetchOpenPRs() throws -> [PullRequest] {
+    /// Your open PRs, and the ones merged within `mergedWindow`, newest merge first.
+    static func fetchMyPRs() throws -> (open: [PullRequest], merged: [PullRequest]) {
         let data = try Shell.run(["gh", "api", "graphql", "-f", "query=\(query)"])
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let viewer = (root["data"] as? [String: Any])?["viewer"] as? [String: Any],
-              let nodes = (viewer["pullRequests"] as? [String: Any])?["nodes"] as? [[String: Any]]
+              let open = (viewer["open"] as? [String: Any])?["nodes"] as? [[String: Any]]
         else { throw Shell.Failure(description: "unexpected GitHub response") }
-        return nodes.compactMap(pullRequest)
+        let merged = ((viewer["merged"] as? [String: Any])?["nodes"] as? [[String: Any]]) ?? []
+        return (
+            open.compactMap(pullRequest),
+            // Sorted by last update, which a comment after the merge also bumps, so re-sort by the merge.
+            merged.compactMap(pullRequest)
+                .filter { $0.mergedAt.map { -$0.timeIntervalSinceNow < mergedWindow } ?? false }
+                .sorted { $0.mergedAt! > $1.mergedAt! }
+        )
     }
 
     static func fetchReviewQueue() throws -> (requested: [ReviewPR], updated: [ReviewPR]) {
@@ -118,7 +132,8 @@ enum GitHub {
             checksPending: pending,
             author: (n["author"] as? [String: Any])?["login"] as? String ?? "",
             createdAt: parseISO(n["createdAt"] as? String),
-            lastCommitAt: parseISO(commit?["committedDate"] as? String)
+            lastCommitAt: parseISO(commit?["committedDate"] as? String),
+            mergedAt: parseISO(n["mergedAt"] as? String)
         )
     }
 }

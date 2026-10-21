@@ -24,6 +24,8 @@ final class Store: ObservableObject {
 
     @Published private(set) var ready: [Row] = []
     @Published private(set) var drafts: [Row] = []
+    /// Your PRs merged in the last few days, newest first.
+    @Published private(set) var merged: [Row] = []
     @Published private(set) var agents: [LinkedAgent] = []
     /// Other people's PRs waiting for your review, and ones you reviewed that got new commits since.
     @Published private(set) var reviewRequested: [ReviewPR] = []
@@ -41,6 +43,7 @@ final class Store: ObservableObject {
     var onChange: (() -> Void)?
 
     private(set) var prs: [PullRequest] = []
+    private(set) var mergedPRs: [PullRequest] = []
     private(set) var localAgents: [Agent] = []
     private(set) var cloudAgents: [Agent] = []
     private(set) var codexAgents: [Agent] = []
@@ -126,13 +129,15 @@ final class Store: ObservableObject {
         guard !githubInFlight else { return }
         githubInFlight = true
         githubQueue.async { [weak self] in
-            let result = Result { try GitHub.fetchOpenPRs() }
+            let result = Result { try GitHub.fetchMyPRs() }
             let review = Result { try GitHub.fetchReviewQueue() }
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.githubInFlight = false
                 switch result {
-                case .success(let prs): self.prs = prs; self.githubError = nil; self.githubUpdated = Date()
+                case .success(let mine):
+                    self.prs = mine.open; self.mergedPRs = mine.merged
+                    self.githubError = nil; self.githubUpdated = Date()
                 case .failure(let e): self.githubError = "\(e)"
                 }
                 self.setReview(review)
@@ -200,8 +205,9 @@ final class Store: ObservableObject {
         guard !menuOpen else { publishPending = true; return }
         publishPending = false
         let rows = link()
-        ready = rows.filter { !$0.pr.isDraft }
-        drafts = rows.filter { $0.pr.isDraft }
+        ready = rows.open.filter { !$0.pr.isDraft }
+        drafts = rows.open.filter { $0.pr.isDraft }
+        merged = rows.merged
         agents = sortAgents(visibleAgents()).map { LinkedAgent(agent: $0, pr: match($0)) }
         counts = Counts(
             needsYou: agents.filter { $0.agent.state == .needsYou }.count,
@@ -221,36 +227,42 @@ final class Store: ObservableObject {
 
     // MARK: Linking
 
-    func link() -> [Row] {
+    func link() -> (open: [Row], merged: [Row]) {
+        // An agent belongs to its open PR first; merged PRs only get the ones no open PR claims.
+        let linkable = { (agent: Agent) in self.match(agent) ?? self.match(agent, in: self.mergedPRs) }
         let live = visibleAgents()
         var byPR: [String: [Agent]] = [:]
         for agent in live {
-            if let pr = match(agent) { byPR[pr.key, default: []].append(agent) }
+            if let pr = linkable(agent) { byPR[pr.key, default: []].append(agent) }
         }
         // Past chats, skipping any that are running (the live entry knows its terminal tab).
         let liveIDs = Set(live.map(\.id))
         var pastByPR: [String: [Agent]] = [:]
         for agent in history where !liveIDs.contains(agent.id) {
-            if let pr = match(agent) { pastByPR[pr.key, default: []].append(agent) }
+            if let pr = linkable(agent) { pastByPR[pr.key, default: []].append(agent) }
         }
 
-        let rows = prs.map { pr in
+        func row(_ pr: PullRequest) -> Row {
             let agents = byPR[pr.key] ?? []
             let latest = (agents + (pastByPR[pr.key] ?? [])).max {
                 ($0.lastActivity ?? .distantPast) < ($1.lastActivity ?? .distantPast)
             }
             return Row(pr: pr, agents: sortAgents(agents), latestChat: latest)
         }
+
+        let open = prs.map(row)
             .enumerated()
             .sorted { a, b in
                 let (pa, pb) = (priority(a.element), priority(b.element))
                 return pa != pb ? pa < pb : a.offset < b.offset
             }
             .map(\.element)
-        return rows
+        return (open, mergedPRs.map(row))
     }
 
-    func match(_ agent: Agent) -> PullRequest? {
+    func match(_ agent: Agent) -> PullRequest? { match(agent, in: prs) }
+
+    private func match(_ agent: Agent, in prs: [PullRequest]) -> PullRequest? {
         if let n = agent.prNumber,
            let pr = prs.first(where: { $0.number == n && (agent.prRepo == nil || $0.repo == agent.prRepo) }) {
             return pr
@@ -286,7 +298,10 @@ final class Store: ObservableObject {
         localAgents = local.poll()
         codexAgents = codex.poll()
         history = sessionHistory.poll() + codex.history()
-        do { prs = try GitHub.fetchOpenPRs(); githubUpdated = Date() } catch { githubError = "\(error)" }
+        do {
+            (prs, mergedPRs) = try GitHub.fetchMyPRs()
+            githubUpdated = Date()
+        } catch { githubError = "\(error)" }
         setReview(Result { try GitHub.fetchReviewQueue() })
         do { cloudAgents = try cloud.poll() } catch { cloudError = "\(error)" }
         publish()
@@ -295,6 +310,7 @@ final class Store: ObservableObject {
     /// Fills the panel with the made-up data in `Demo`, for the README screenshots.
     func loadDemo() {
         prs = Demo.prs
+        mergedPRs = Demo.merged
         localAgents = Demo.localAgents
         cloudAgents = Demo.cloudAgents
         codexAgents = Demo.codexAgents
@@ -312,6 +328,9 @@ final class Store: ObservableObject {
         for row in ready + drafts {
             let pr = row.pr
             print("#\(pr.number) ci=\(pr.ci) review=\(pr.reviewDecision ?? "-") threads=\(pr.unresolvedThreads) \(pr.mergeable) draft=\(pr.isDraft) agents=\(row.agents.map { "\($0.state)" }) latest=\(row.latestChat.map { "[\($0.source)\($0.running ? " running" : "")] \($0.name) \(relativeTime($0.lastActivity))" } ?? "-")")
+        }
+        for row in merged {
+            print("#\(row.pr.number) merged \(relativeTime(row.pr.mergedAt)) ago latest=\(row.latestChat.map { "[\($0.source)] \($0.name)" } ?? "-")")
         }
         print("-- review: \(reviewError ?? "ok")")
         for r in reviewRequested + reviewUpdated {

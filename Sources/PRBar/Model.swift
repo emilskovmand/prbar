@@ -16,6 +16,7 @@ struct PullRequest {
     var author = ""
     var createdAt: Date? = nil
     var lastCommitAt: Date? = nil
+    var mergedAt: Date? = nil
 
     enum CI { case passing, failing, pending, none }
 
@@ -119,9 +120,12 @@ let isoFormatter: ISO8601DateFormatter = {
     return f
 }()
 
+/// GitHub's dates have no fractional seconds ("2026-10-21T10:24:41Z"), which `isoFormatter` rejects.
+let wholeSecondsISOFormatter = ISO8601DateFormatter()
+
 func parseISO(_ s: String?) -> Date? {
     guard let s else { return nil }
-    if let d = isoFormatter.date(from: s) { return d }
+    if let d = isoFormatter.date(from: s) ?? wholeSecondsISOFormatter.date(from: s) { return d }
     // The cloud API uses microsecond precision, which ISO8601DateFormatter rejects.
     let trimmed = s.replacingOccurrences(of: #"(\.\d{3})\d+"#, with: "$1", options: .regularExpression)
     return isoFormatter.date(from: trimmed)

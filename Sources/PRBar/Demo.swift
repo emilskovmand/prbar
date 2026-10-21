@@ -7,14 +7,15 @@ enum Demo {
     private static func pr(_ number: Int, _ title: String, draft: Bool = false, review: String? = nil,
                            mergeable: String = "MERGEABLE", threads: Int = 0, passed: Int = 6, failed: Int = 0,
                            pending: Int = 0, author: String = "you", age: TimeInterval = 86400,
-                           newCommits: Bool = false) -> PullRequest {
+                           newCommits: Bool = false, mergedAgo: TimeInterval? = nil) -> PullRequest {
         PullRequest(
             repo: repo, number: number, title: title,
             url: URL(string: "https://github.com/\(repo)/pull/\(number)")!,
             isDraft: draft, headRef: "branch-\(number)", reviewDecision: review, mergeable: mergeable,
             unresolvedThreads: threads, checksPassed: passed, checksFailed: failed, checksPending: pending,
             author: author, createdAt: Date(timeIntervalSinceNow: -age),
-            lastCommitAt: Date(timeIntervalSinceNow: newCommits ? -600 : -age)
+            lastCommitAt: Date(timeIntervalSinceNow: newCommits ? -600 : -age),
+            mergedAt: mergedAgo.map { Date(timeIntervalSinceNow: -$0) }
         )
     }
 
@@ -25,6 +26,11 @@ enum Demo {
         pr(421, "Upgrade to React 19", pending: 4),
         pr(423, "Gift cards: balance lookup", draft: true),
         pr(399, "Spike: semantic product search", draft: true, mergeable: "CONFLICTING", passed: 3, failed: 2),
+    ]
+
+    static let merged = [
+        pr(416, "Show delivery estimates on the product page", mergedAgo: 2 * 3600),
+        pr(408, "Retry failed webhook deliveries", mergedAgo: 30 * 3600),
     ]
 
     private static func agent(_ kind: Agent.Kind, _ source: String, _ name: String, _ state: AgentState,
