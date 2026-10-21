@@ -191,7 +191,7 @@ private struct NotificationToggle: View {
 
 /// The symbols and colors shared by the panel and the menu bar, so the two always match.
 enum Indicator {
-    case needsYou, working, watching, idle, passing, failing, ready, draft, merged
+    case needsYou, working, watching, idle, passing, failing, ready, draft
 
     var symbol: String {
         switch self {
@@ -201,7 +201,6 @@ enum Indicator {
         case .passing: return "checkmark.circle.fill"
         case .failing: return "xmark.circle.fill"
         case .ready, .draft: return "arrow.triangle.pull"
-        case .merged: return "arrow.triangle.merge"
         }
     }
 
@@ -210,7 +209,6 @@ enum Indicator {
         case .needsYou: return .systemOrange
         case .ready: return .systemGreen
         case .draft: return .systemGray
-        case .merged: return .systemPurple
         case .working, .passing: return .systemGreen
         case .watching: return .systemBlue
         case .idle: return .tertiaryLabelColor
@@ -463,10 +461,8 @@ private struct MergedRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: Indicator.merged.symbol)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Indicator.merged.color)
-                .frame(width: 16)
+            MergeIcon()
+                .frame(width: 16, height: 16)
                 .padding(.top, 1)
             PRLines(pr: pr, tags: [Tag(text: "Merged \(relativeTime(pr.mergedAt)) ago")])
             Spacer(minLength: 6)
@@ -474,6 +470,30 @@ private struct MergedRow: View {
         }
         .modifier(RowButton { Browser.open(pr.url) })
         .help("\(pr.repo) · \(pr.headRef)\n\(pr.title)")
+    }
+}
+
+/// GitHub's git-merge icon: the branch line curving into the base, a dot on each end.
+/// SF Symbols' `arrow.triangle.merge` doesn't read as a merge at this size.
+private struct MergeIcon: View {
+    var body: some View {
+        Canvas { context, size in
+            let s = size.width / 16
+            let top = CGPoint(x: 4.5 * s, y: 3 * s)
+            let bottom = CGPoint(x: 4.5 * s, y: 13 * s)
+            let right = CGPoint(x: 12 * s, y: 9.5 * s)
+            var lines = Path()
+            lines.move(to: top)
+            lines.addLine(to: bottom)
+            lines.move(to: top)
+            lines.addQuadCurve(to: right, control: CGPoint(x: top.x, y: right.y))
+            let color = Color(nsColor: .systemPurple)
+            context.stroke(lines, with: .color(color), style: StrokeStyle(lineWidth: 1.6 * s, lineCap: .round))
+            for p in [top, bottom, right] {
+                let r = 2.2 * s
+                context.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: 2 * r, height: 2 * r)), with: .color(color))
+            }
+        }
     }
 }
 
