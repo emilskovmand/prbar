@@ -340,6 +340,21 @@ private struct Tag: Hashable {
     var color: Color? = nil
 }
 
+private struct TagLabel: View {
+    let tag: Tag
+
+    var body: some View {
+        if let color = tag.color {
+            HStack(spacing: 4) {
+                Circle().fill(color).frame(width: 5, height: 5)
+                Text(tag.text).foregroundStyle(color)
+            }
+        } else {
+            Text(tag.text).foregroundStyle(.secondary)
+        }
+    }
+}
+
 /// Title on top, "#123 ● Conflicts ● 1 failing" below, shared by your PRs and the review queue.
 private struct PRLines: View {
     let pr: PullRequest
@@ -363,17 +378,7 @@ private struct PRLines: View {
                     .fixedSize()
                 // Earlier tags matter more, so when space runs out the last ones shorten first.
                 ForEach(Array(tags.enumerated()), id: \.element) { i, tag in
-                    Group {
-                        if let color = tag.color {
-                            HStack(spacing: 4) {
-                                Circle().fill(color).frame(width: 5, height: 5)
-                                Text(tag.text).foregroundStyle(color)
-                            }
-                        } else {
-                            Text(tag.text).foregroundStyle(.secondary)
-                        }
-                    }
-                    .layoutPriority(Double(tags.count - i))
+                    TagLabel(tag: tag).layoutPriority(Double(tags.count - i))
                 }
             }
             .font(.system(size: 11))
@@ -614,10 +619,15 @@ private struct AgentRow: View {
                     .foregroundStyle(idle ? .secondary : .primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                subtitle
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
+                HStack(spacing: 7) {
+                    subtitle.foregroundStyle(.tertiary)
+                    // Kept whole; the subtitle shortens first.
+                    if agent.editedCode {
+                        TagLabel(tag: Tag(text: "Code changes", color: Color(nsColor: .systemPurple))).fixedSize()
+                    }
+                }
+                .font(.system(size: 11))
+                .lineLimit(1)
             }
             Spacer(minLength: 6)
             trailing.font(.system(size: 11, weight: idle ? .regular : .medium)).padding(.top, 1)

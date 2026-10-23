@@ -16,6 +16,7 @@ final class LocalAgents {
         var awaySummary: String?
         var cwd: String?
         var lastTimestamp: Date?
+        var editedCode = false
     }
 
     private var transcripts: [String: TranscriptState] = [:]
@@ -80,7 +81,8 @@ final class LocalAgents {
                 cwd: cwd,
                 worktree: worktree,
                 tty: host.tty,
-                hostApp: host.app
+                hostApp: host.app,
+                editedCode: t?.editedCode ?? false
             ))
         }
         transcripts = transcripts.filter { seen.contains($0.key) }
@@ -165,6 +167,11 @@ final class LocalAgents {
                 t.title = (obj["customTitle"] as? String) ?? t.title
             case "last-prompt":
                 t.lastPrompt = (obj["lastPrompt"] as? String).map(oneLine)
+            case "assistant":
+                let content = (obj["message"] as? [String: Any])?["content"] as? [[String: Any]] ?? []
+                if content.contains(where: { $0["type"] as? String == "tool_use" && Self.editTools.contains($0["name"] as? String ?? "") }) {
+                    t.editedCode = true
+                }
             case "user":
                 // A new prompt makes any earlier recap stale.
                 if (obj["message"] as? [String: Any])?["content"] is String { t.awaySummary = nil }
@@ -179,6 +186,8 @@ final class LocalAgents {
         transcripts[sessionId] = t
         return t
     }
+
+    private static let editTools: Set<String> = ["Edit", "MultiEdit", "Write", "NotebookEdit"]
 
     private func findTranscript(_ sessionId: String) -> URL? {
         let projects = claudeDir.appendingPathComponent("projects")

@@ -77,6 +77,7 @@ struct Agent {
     var worktree: String? = nil     // the git worktree folder the agent works in, e.g. "bli-1599"
     var tty: String? = nil          // e.g. /dev/ttys002
     var hostApp: URL? = nil         // the app the session runs in (iTerm, Terminal, Cursor, Claude…)
+    var editedCode = false          // the agent has edited or written files in this chat
 }
 
 /// Pulls a Linear-style ticket id ("bli-1637") out of a branch, path or title.
