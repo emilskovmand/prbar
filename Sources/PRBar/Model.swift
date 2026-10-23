@@ -77,7 +77,7 @@ struct Agent {
     var worktree: String? = nil     // the git worktree folder the agent works in, e.g. "bli-1599"
     var tty: String? = nil          // e.g. /dev/ttys002
     var hostApp: URL? = nil         // the app the session runs in (iTerm, Terminal, Cursor, Claude…)
-    var editedCode = false          // the agent has edited or written files in this chat
+    var hasCodeChanges = false      // files it edited are uncommitted, or its worktree has unpushed commits
 }
 
 /// Pulls a Linear-style ticket id ("bli-1637") out of a branch, path or title.
@@ -104,14 +104,14 @@ func worktreeName(containing path: String) -> String? {
     return nil
 }
 
-/// Whether `path` is in a git checkout (main or worktree), whether or not the file still exists.
-func isInGitCheckout(_ path: String) -> Bool {
+/// The root of the git checkout (main or worktree) that `path` is in, whether or not the file still exists.
+func gitCheckoutRoot(containing path: String) -> String? {
     var dir = URL(fileURLWithPath: path).standardizedFileURL.deletingLastPathComponent()
     while dir.path != "/" {
-        if FileManager.default.fileExists(atPath: dir.appendingPathComponent(".git").path) { return true }
+        if FileManager.default.fileExists(atPath: dir.appendingPathComponent(".git").path) { return dir.path }
         dir.deleteLastPathComponent()
     }
-    return false
+    return nil
 }
 
 func relativeTime(_ date: Date?) -> String {

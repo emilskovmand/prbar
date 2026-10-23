@@ -622,7 +622,7 @@ private struct AgentRow: View {
                 HStack(spacing: 7) {
                     subtitle.foregroundStyle(.tertiary)
                     // Kept whole; the subtitle shortens first.
-                    if agent.editedCode {
+                    if agent.hasCodeChanges {
                         TagLabel(tag: Tag(text: "Code changes", color: Color(nsColor: .systemPurple))).fixedSize()
                     }
                 }

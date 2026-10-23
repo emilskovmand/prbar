@@ -37,7 +37,7 @@ enum Demo {
                               ago: TimeInterval, pr: Int?, worktree: String? = nil, edited: Bool = false) -> Agent {
         Agent(id: name, kind: kind, source: source, name: name, state: state, detail: nil,
               lastActivity: Date(timeIntervalSinceNow: -ago), prRepo: pr == nil ? nil : repo, prNumber: pr,
-              branches: [], ticket: nil, openURL: nil, resumeCommand: nil, worktree: worktree, editedCode: edited)
+              branches: [], ticket: nil, openURL: nil, resumeCommand: nil, worktree: worktree, hasCodeChanges: edited)
     }
 
     static let localAgents = [

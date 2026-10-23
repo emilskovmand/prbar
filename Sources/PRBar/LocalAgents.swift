@@ -16,11 +16,13 @@ final class LocalAgents {
         var awaySummary: String?
         var cwd: String?
         var lastTimestamp: Date?
-        var editedCode = false
+        /// Files edited in a git checkout, by checkout root.
+        var editedFiles: [String: Set<String>] = [:]
     }
 
     private var transcripts: [String: TranscriptState] = [:]
     private var branchCache: [String: (branch: String?, at: Date)] = [:]
+    private var changesCache: [String: (changes: Bool, at: Date)] = [:]
     private var hostCache: [Int32: (tty: String?, app: URL?)] = [:]
 
     private struct SessionFile: Decodable {
@@ -82,11 +84,12 @@ final class LocalAgents {
                 worktree: worktree,
                 tty: host.tty,
                 hostApp: host.app,
-                editedCode: t?.editedCode ?? false
+                hasCodeChanges: t.map { hasCodeChanges($0.editedFiles, sessionId: s.sessionId) } ?? false
             ))
         }
         transcripts = transcripts.filter { seen.contains($0.key) }
         hostCache = hostCache.filter { seenPids.contains($0.key) }
+        changesCache = changesCache.filter { seen.contains($0.key) }
         return agents
     }
 
@@ -170,13 +173,11 @@ final class LocalAgents {
             case "assistant":
                 let content = (obj["message"] as? [String: Any])?["content"] as? [[String: Any]] ?? []
                 // Memory, plan and scratchpad files aren't code; only edits inside a git checkout count.
-                if content.contains(where: { c in
-                    guard c["type"] as? String == "tool_use", Self.editTools.contains(c["name"] as? String ?? ""),
-                          let input = c["input"] as? [String: Any],
-                          let file = (input["file_path"] ?? input["notebook_path"]) as? String else { return false }
-                    return isInGitCheckout(file)
-                }) {
-                    t.editedCode = true
+                for c in content where c["type"] as? String == "tool_use" && Self.editTools.contains(c["name"] as? String ?? "") {
+                    guard let input = c["input"] as? [String: Any],
+                          let file = (input["file_path"] ?? input["notebook_path"]) as? String,
+                          let root = gitCheckoutRoot(containing: file) else { continue }
+                    t.editedFiles[root, default: []].insert(file)
                 }
             case "user":
                 // A new prompt makes any earlier recap stale.
@@ -201,6 +202,28 @@ final class LocalAgents {
         return dirs.lazy
             .map { $0.appendingPathComponent("\(sessionId).jsonl") }
             .first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    /// Whether the session's work is still only on this Mac: a file it edited has uncommitted changes,
+    /// or it edited in a worktree whose branch has commits on no remote. A shared checkout's unpushed
+    /// commits could be anyone's, so there only the edited files count.
+    private func hasCodeChanges(_ edited: [String: Set<String>], sessionId: String) -> Bool {
+        guard !edited.isEmpty else { return false }
+        if let c = changesCache[sessionId], -c.at.timeIntervalSinceNow < 15 { return c.changes }
+        func git(_ args: [String], in root: String) -> String {
+            (try? Shell.run(["git"] + args, cwd: root, timeout: 5))
+                .flatMap { String(data: $0, encoding: .utf8) }?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }
+        let changes = edited.contains { root, files in
+            // A removed worktree took its changes with it.
+            guard FileManager.default.fileExists(atPath: root) else { return false }
+            if !git(["status", "--porcelain", "--"] + files.sorted(), in: root).isEmpty { return true }
+            return worktreeName(containing: root) != nil
+                && (Int(git(["rev-list", "--count", "HEAD", "--not", "--remotes"], in: root)) ?? 0) > 0
+        }
+        changesCache[sessionId] = (changes, Date())
+        return changes
     }
 
     private func currentBranch(in cwd: String) -> String? {

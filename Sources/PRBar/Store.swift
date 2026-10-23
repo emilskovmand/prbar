@@ -338,7 +338,7 @@ final class Store: ObservableObject {
         }
         print("-- agents")
         for a in agents {
-            print("  \(a.agent.state) [\(a.agent.source)] \(a.agent.name) \(a.pr.map { "#\($0.number)" } ?? "-") \(relativeTime(a.agent.lastActivity)) worktree=\(a.agent.worktree ?? "-")\(a.agent.editedCode ? " code-changes" : "")")
+            print("  \(a.agent.state) [\(a.agent.source)] \(a.agent.name) \(a.pr.map { "#\($0.number)" } ?? "-") \(relativeTime(a.agent.lastActivity)) worktree=\(a.agent.worktree ?? "-")\(a.agent.hasCodeChanges ? " code-changes" : "")")
         }
     }
 }
