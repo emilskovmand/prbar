@@ -169,7 +169,13 @@ final class LocalAgents {
                 t.lastPrompt = (obj["lastPrompt"] as? String).map(oneLine)
             case "assistant":
                 let content = (obj["message"] as? [String: Any])?["content"] as? [[String: Any]] ?? []
-                if content.contains(where: { $0["type"] as? String == "tool_use" && Self.editTools.contains($0["name"] as? String ?? "") }) {
+                // Memory, plan and scratchpad files aren't code; only edits inside a git checkout count.
+                if content.contains(where: { c in
+                    guard c["type"] as? String == "tool_use", Self.editTools.contains(c["name"] as? String ?? ""),
+                          let input = c["input"] as? [String: Any],
+                          let file = (input["file_path"] ?? input["notebook_path"]) as? String else { return false }
+                    return isInGitCheckout(file)
+                }) {
                     t.editedCode = true
                 }
             case "user":

@@ -104,6 +104,16 @@ func worktreeName(containing path: String) -> String? {
     return nil
 }
 
+/// Whether `path` is in a git checkout (main or worktree), whether or not the file still exists.
+func isInGitCheckout(_ path: String) -> Bool {
+    var dir = URL(fileURLWithPath: path).standardizedFileURL.deletingLastPathComponent()
+    while dir.path != "/" {
+        if FileManager.default.fileExists(atPath: dir.appendingPathComponent(".git").path) { return true }
+        dir.deleteLastPathComponent()
+    }
+    return false
+}
+
 func relativeTime(_ date: Date?) -> String {
     guard let date else { return "" }
     let s = Int(-date.timeIntervalSinceNow)
