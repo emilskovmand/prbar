@@ -17,7 +17,7 @@ if CommandLine.arguments.contains("--dump") {
 
 /// Renders the panel to a PNG at 2x, the way it looks in `appearance`.
 func renderPanel(to path: String, appearance: NSAppearance.Name? = nil, rounded: Bool = false, settle: TimeInterval) throws {
-    let panel = PanelView(store: delegate.store, updater: delegate.updater)
+    let panel = PanelView(store: delegate.store, updater: delegate.updater, focus: delegate.focus)
         .background(Color(nsColor: .windowBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: rounded ? 12 : 0, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: rounded ? 12 : 0, style: .continuous).strokeBorder(Color.primary.opacity(rounded ? 0.15 : 0)))

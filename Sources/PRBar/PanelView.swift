@@ -8,6 +8,7 @@ struct PanelView: View {
 
     @ObservedObject var store: Store
     @ObservedObject var updater: Updater
+    @ObservedObject var focus: FocusTracker
     @AppStorage("tab") private var tab: Tab = .mine
     /// Section ids the user folded away, comma-separated.
     @AppStorage("collapsedSections") private var collapsed = ""
@@ -67,22 +68,22 @@ struct PanelView: View {
         }
         if !store.ready.isEmpty {
             section("ready", "Ready for review", store.ready.count, divider: false) {
-                ForEach(store.ready) { PRRow(row: $0) }
+                ForEach(store.ready) { PRRow(row: $0, focused: $0.agents.contains(where: focus.isFocused)) }
             }
         }
         if !store.drafts.isEmpty {
             section("drafts", "Drafts", store.drafts.count, divider: !store.ready.isEmpty) {
-                ForEach(store.drafts) { PRRow(row: $0) }
+                ForEach(store.drafts) { PRRow(row: $0, focused: $0.agents.contains(where: focus.isFocused)) }
             }
         }
         if !store.merged.isEmpty {
             section("merged", "Recently merged", store.merged.count, divider: !store.ready.isEmpty || !store.drafts.isEmpty) {
-                ForEach(store.merged) { MergedRow(row: $0) }
+                ForEach(store.merged) { MergedRow(row: $0, focused: $0.agents.contains(where: focus.isFocused)) }
             }
         }
         if !store.agents.isEmpty {
             section("agents", "Agents", store.agents.count, divider: true) {
-                ForEach(store.agents) { AgentRow(linked: $0) }
+                ForEach(store.agents) { AgentRow(linked: $0, focused: focus.isFocused($0.agent)) }
             }
         }
     }
@@ -318,8 +319,10 @@ private struct EmptyLine: View {
     }
 }
 
-/// Hover highlight plus a click action, shared by every row.
+/// Hover highlight plus a click action, shared by every row. A focused row (the chat in the
+/// terminal tab you're in, or its PR) is tinted like a selection.
 private struct RowButton: ViewModifier {
+    var focused = false
     let action: () -> Void
     @State private var hovered = false
 
@@ -327,10 +330,15 @@ private struct RowButton: ViewModifier {
         content
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(RoundedRectangle(cornerRadius: 7).fill(hovered ? Color.primary.opacity(0.07) : .clear))
+            .background(RoundedRectangle(cornerRadius: 7).fill(fill))
             .contentShape(Rectangle())
             .onHover { hovered = $0 }
             .onTapGesture(perform: action)
+    }
+
+    private var fill: Color {
+        if focused { return Color.accentColor.opacity(hovered ? 0.2 : 0.13) }
+        return hovered ? Color.primary.opacity(0.07) : .clear
     }
 }
 
@@ -416,6 +424,7 @@ private func problemTags(_ pr: PullRequest) -> [Tag] {
 
 private struct PRRow: View {
     let row: Store.Row
+    let focused: Bool
 
     private var pr: PullRequest { row.pr }
 
@@ -426,7 +435,7 @@ private struct PRRow: View {
             Spacer(minLength: 6)
             if let chat = row.latestChat { ChatButton(agent: chat) }
         }
-        .modifier(RowButton { Browser.open(pr.url) })
+        .modifier(RowButton(focused: focused) { Browser.open(pr.url) })
         .help(([pr.repo + " · " + pr.headRef, pr.title] + row.agents.map { "\($0.source) agent: \($0.name)" })
             .joined(separator: "\n"))
     }
@@ -461,6 +470,7 @@ private struct PRRow: View {
 /// One of your PRs merged in the last few days: a purple merge icon instead of CI, and when it merged.
 private struct MergedRow: View {
     let row: Store.Row
+    let focused: Bool
 
     private var pr: PullRequest { row.pr }
 
@@ -473,7 +483,7 @@ private struct MergedRow: View {
             Spacer(minLength: 6)
             if let chat = row.latestChat { ChatButton(agent: chat) }
         }
-        .modifier(RowButton { Browser.open(pr.url) })
+        .modifier(RowButton(focused: focused) { Browser.open(pr.url) })
         .help("\(pr.repo) · \(pr.headRef)\n\(pr.title)")
     }
 }
@@ -605,6 +615,7 @@ private struct ChatButton: View {
 
 private struct AgentRow: View {
     let linked: Store.LinkedAgent
+    let focused: Bool
 
     private var agent: Agent { linked.agent }
     private var indicator: Indicator { Indicator(agent.state) }
@@ -622,6 +633,9 @@ private struct AgentRow: View {
                 HStack(spacing: 7) {
                     subtitle.foregroundStyle(.tertiary)
                     // Kept whole; the subtitle shortens first.
+                    if focused {
+                        Text("Focused").foregroundStyle(Color.accentColor).fixedSize()
+                    }
                     if agent.hasCodeChanges {
                         TagLabel(tag: Tag(text: "Code changes", color: Color(nsColor: .systemPurple))).fixedSize()
                     }
@@ -632,7 +646,7 @@ private struct AgentRow: View {
             Spacer(minLength: 6)
             trailing.font(.system(size: 11, weight: idle ? .regular : .medium)).padding(.top, 1)
         }
-        .modifier(RowButton { ChatOpener.open(agent) })
+        .modifier(RowButton(focused: focused) { ChatOpener.open(agent) })
         .help([agent.name, agent.detail, agent.cwd.map { (agent.worktree == nil ? "In " : "In worktree ") + abbreviatingHome($0) }, ChatOpener.destination(for: agent)]
             .compactMap { $0 }.joined(separator: "\n\n"))
     }

@@ -4,9 +4,10 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = Store()
     let updater = Updater()
+    let focus = FocusTracker()
     private lazy var notifier = Notifier(store: store)
     private lazy var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private lazy var panel = FloatingPanel(rootView: PanelView(store: store, updater: updater))
+    private lazy var panel = FloatingPanel(rootView: PanelView(store: store, updater: updater, focus: focus))
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let button = statusItem.button {
@@ -25,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         notifier.start()
         store.start()
         updater.start()
+        focus.panelVisible = { [weak self] in self?.panel.isVisible ?? false }
+        focus.start()
         renderTitle()
 
         DispatchQueue.global(qos: .utility).async { Launcher.install() }
