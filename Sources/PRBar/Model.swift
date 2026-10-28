@@ -125,6 +125,13 @@ func relativeTime(_ date: Date?) -> String {
     }
 }
 
+/// "Oct 24", with the year when it isn't this year.
+func shortDate(_ date: Date?) -> String {
+    guard let date else { return "" }
+    let thisYear = Calendar.current.isDate(date, equalTo: .now, toGranularity: .year)
+    return date.formatted(thisYear ? .dateTime.month(.abbreviated).day() : .dateTime.month(.abbreviated).day().year())
+}
+
 let isoFormatter: ISO8601DateFormatter = {
     let f = ISO8601DateFormatter()
     f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

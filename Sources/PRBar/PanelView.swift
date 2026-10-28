@@ -363,7 +363,7 @@ private struct TagLabel: View {
     }
 }
 
-/// Title on top, "#123 ● Conflicts ● 1 failing" below, shared by your PRs and the review queue.
+/// Title on top, "#123 Oct 24 ● Conflicts ● 1 failing" below, shared by your PRs and the review queue.
 private struct PRLines: View {
     let pr: PullRequest
     let tags: [Tag]
@@ -384,6 +384,10 @@ private struct PRLines: View {
             HStack(spacing: 7) {
                 Text(verbatim: "#\(pr.number)").monospacedDigit().foregroundStyle(.secondary)
                     .fixedSize()
+                if let created = pr.createdAt {
+                    Text(shortDate(created)).foregroundStyle(.tertiary).fixedSize()
+                        .help("Opened \(created.formatted(date: .long, time: .shortened))")
+                }
                 // Earlier tags matter more, so when space runs out the last ones shorten first.
                 ForEach(Array(tags.enumerated()), id: \.element) { i, tag in
                     TagLabel(tag: tag).layoutPriority(Double(tags.count - i))
@@ -524,13 +528,8 @@ private struct ReviewRow: View {
             CIIcon(ci: pr.ci)
             PRLines(pr: pr, tags: tags)
             Spacer(minLength: 6)
-            HStack(spacing: 6) {
-                Avatar(login: pr.author)
-                Text(relativeTime(pr.createdAt))
-                    .font(.system(size: 11).monospacedDigit())
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.top, 1)
+            Avatar(login: pr.author)
+                .padding(.top, 1)
         }
         .modifier(RowButton { Browser.open(pr.url) })
         .help("\(pr.repo) · @\(pr.author) · opened \(relativeTime(pr.createdAt)) ago\n\(pr.title)")
