@@ -20,6 +20,8 @@ final class Store: ObservableObject {
     /// The counts shown in the menu bar, taken from exactly what the panel lists.
     struct Counts: Equatable {
         var needsYou = 0, ready = 0, drafts = 0, failing = 0
+        /// Main agents working or watching, and every running subagent under any agent.
+        var agentsRunning = 0, subagentsRunning = 0
     }
 
     @Published private(set) var ready: [Row] = []
@@ -243,7 +245,9 @@ final class Store: ObservableObject {
             ready: ready.count,
             drafts: drafts.count,
             // Red in the panel: a red ✗ for failing CI or red "conflicts" text.
-            failing: prs.filter { $0.ci == .failing || $0.mergeable == "CONFLICTING" }.count
+            failing: prs.filter { $0.ci == .failing || $0.mergeable == "CONFLICTING" }.count,
+            agentsRunning: agents.filter { $0.agent.state == .working || $0.agent.state == .watching }.count,
+            subagentsRunning: agents.reduce(0) { $0 + $1.agent.runningSubagents }
         )
         onChange?()
     }

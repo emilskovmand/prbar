@@ -71,13 +71,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let title = NSMutableAttributedString()
         var tips: [String] = []
 
-        func add(_ indicator: Indicator, _ count: Int, _ one: String, _ many: String) {
+        func add(_ indicator: Indicator, _ count: Int, _ one: String, _ many: String, image custom: NSImage? = nil, tip: String? = nil) {
             guard count > 0 else { return }
             // Two palette colors, so the ✗ or pencil inside the circle stays visible like in the panel;
             // with one color the whole symbol fills in and reads as a plain dot.
             let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
                 .applying(.init(paletteColors: indicator.hasGlyph ? [.white, indicator.nsColor] : [indicator.nsColor]))
-            if let image = NSImage(systemSymbolName: indicator.symbol, accessibilityDescription: one)?
+            if let image = custom ?? NSImage(systemSymbolName: indicator.symbol, accessibilityDescription: one)?
                 .withSymbolConfiguration(config) {
                 image.isTemplate = false
                 let attachment = NSTextAttachment()
@@ -87,12 +87,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title.append(NSAttributedString(attachment: attachment))
             }
             title.append(NSAttributedString(string: " \(count)", attributes: [.font: font]))
-            tips.append("\(count) \(count == 1 ? one : many)")
+            tips.append(tip ?? "\(count) \(count == 1 ? one : many)")
         }
         add(.needsYou, c.needsYou, "agent needs you", "agents need you")
+        let running = c.agentsRunning + c.subagentsRunning
+        add(.working, running, "agent running", "agents running", image: robotIcon(color: Indicator.working.nsColor),
+            tip: [c.agentsRunning > 0 ? "\(c.agentsRunning) agent\(c.agentsRunning == 1 ? "" : "s")" : nil,
+                  c.subagentsRunning > 0 ? "\(c.subagentsRunning) subagent\(c.subagentsRunning == 1 ? "" : "s")" : nil]
+                .compactMap { $0 }.joined(separator: " and ") + " running")
         add(.ready, c.ready, "PR ready for review", "PRs ready for review")
         add(.draft, c.drafts, "draft PR", "draft PRs")
         add(.failing, c.failing, "PR failing CI or with conflicts", "PRs failing CI or with conflicts")
         return (title, tips.isEmpty ? "PRBar" : tips.joined(separator: "\n"))
     }
+}
+
+/// A small robot head for the menu bar's running-agents count; SF Symbols has no robot.
+/// Drawn at the size of the 13pt symbols next to it, with the eyes and mouth cut out.
+func robotIcon(color: NSColor) -> NSImage {
+    let image = NSImage(size: NSSize(width: 15, height: 15), flipped: true) { _ in
+        color.set()
+        let antenna = NSBezierPath()
+        antenna.move(to: NSPoint(x: 7.5, y: 2.5))
+        antenna.line(to: NSPoint(x: 7.5, y: 5))
+        antenna.lineWidth = 1.3
+        antenna.stroke()
+        NSBezierPath(ovalIn: NSRect(x: 6.1, y: 0.3, width: 2.8, height: 2.8)).fill()
+        NSBezierPath(roundedRect: NSRect(x: 0.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9).fill()
+        NSBezierPath(roundedRect: NSRect(x: 12.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9).fill()
+        NSBezierPath(roundedRect: NSRect(x: 2.3, y: 4.6, width: 10.4, height: 9.6), xRadius: 2.8, yRadius: 2.8).fill()
+        NSGraphicsContext.current?.compositingOperation = .destinationOut
+        NSBezierPath(ovalIn: NSRect(x: 4.6, y: 7.5, width: 2.3, height: 2.7)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 8.1, y: 7.5, width: 2.3, height: 2.7)).fill()
+        NSBezierPath(roundedRect: NSRect(x: 5.5, y: 11.2, width: 4, height: 1.1), xRadius: 0.55, yRadius: 0.55).fill()
+        return true
+    }
+    image.accessibilityDescription = "Agents running"
+    return image
 }
