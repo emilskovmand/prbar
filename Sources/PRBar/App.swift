@@ -91,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         add(.needsYou, c.needsYou, "agent needs you", "agents need you")
         let running = c.agentsRunning + c.subagentsRunning
-        add(.working, running, "agent running", "agents running", image: robotIcon(color: Indicator.working.nsColor),
+        add(.working, running, "agent running", "agents running", image: robotIcon(),
             tip: [c.agentsRunning > 0 ? "\(c.agentsRunning) agent\(c.agentsRunning == 1 ? "" : "s")" : nil,
                   c.subagentsRunning > 0 ? "\(c.subagentsRunning) subagent\(c.subagentsRunning == 1 ? "" : "s")" : nil]
                 .compactMap { $0 }.joined(separator: " and ") + " running")
@@ -102,21 +102,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// A small robot head for the menu bar's running-agents count; SF Symbols has no robot.
-/// Drawn at the size of the 13pt symbols next to it, with the eyes and mouth cut out.
-func robotIcon(color: NSColor) -> NSImage {
-    let image = NSImage(size: NSSize(width: 15, height: 15), flipped: true) { _ in
-        color.set()
-        let antenna = NSBezierPath()
-        antenna.move(to: NSPoint(x: 7.5, y: 2.5))
-        antenna.line(to: NSPoint(x: 7.5, y: 5))
-        antenna.lineWidth = 1.3
-        antenna.stroke()
-        NSBezierPath(ovalIn: NSRect(x: 6.1, y: 0.3, width: 2.8, height: 2.8)).fill()
-        NSBezierPath(roundedRect: NSRect(x: 0.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9).fill()
-        NSBezierPath(roundedRect: NSRect(x: 12.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9).fill()
-        NSBezierPath(roundedRect: NSRect(x: 2.3, y: 4.6, width: 10.4, height: 9.6), xRadius: 2.8, yRadius: 2.8).fill()
+/// A small robot head for the menu bar's running-agents count, filled with a rainbow; SF Symbols
+/// has no robot. Drawn at the size of the 13pt symbols next to it, with the eyes and mouth cut out.
+func robotIcon() -> NSImage {
+    let image = NSImage(size: NSSize(width: 15, height: 15), flipped: true) { rect in
+        let shape = NSBezierPath()
+        shape.append(NSBezierPath(ovalIn: NSRect(x: 6.1, y: 0.3, width: 2.8, height: 2.8)))          // antenna ball
+        shape.append(NSBezierPath(rect: NSRect(x: 6.85, y: 2.5, width: 1.3, height: 2.6)))            // antenna
+        shape.append(NSBezierPath(roundedRect: NSRect(x: 0.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9))
+        shape.append(NSBezierPath(roundedRect: NSRect(x: 12.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9))
+        shape.append(NSBezierPath(roundedRect: NSRect(x: 2.3, y: 4.6, width: 10.4, height: 9.6), xRadius: 2.8, yRadius: 2.8))
+        shape.windingRule = .nonZero
+        let rainbow = NSGradient(colors: [.systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple])
+        rainbow?.draw(in: shape, angle: 0)
+
         NSGraphicsContext.current?.compositingOperation = .destinationOut
+        NSColor.black.setFill()
         NSBezierPath(ovalIn: NSRect(x: 4.6, y: 7.5, width: 2.3, height: 2.7)).fill()
         NSBezierPath(ovalIn: NSRect(x: 8.1, y: 7.5, width: 2.3, height: 2.7)).fill()
         NSBezierPath(roundedRect: NSRect(x: 5.5, y: 11.2, width: 4, height: 1.1), xRadius: 0.55, yRadius: 0.55).fill()
