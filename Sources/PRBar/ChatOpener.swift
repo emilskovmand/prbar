@@ -15,7 +15,13 @@ enum ChatOpener {
         }
     }
 
+    /// The last chat opened and when, so a double click doesn't resume the same chat twice.
+    private static var lastOpened: (id: String, at: Date)?
+    private static let repeatWindow: TimeInterval = 2
+
     static func open(_ agent: Agent) {
+        if let last = lastOpened, last.id == agent.id, Date().timeIntervalSince(last.at) < repeatWindow { return }
+        lastOpened = (agent.id, Date())
         switch agent.kind {
         case .cloud where usesClaudeDesktop:
             // Desktop routes claude://claude.ai/code/<id> to the session's Code view.
