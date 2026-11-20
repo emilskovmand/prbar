@@ -102,25 +102,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// A small robot head for the menu bar's running-agents count, filled with a rainbow; SF Symbols
-/// has no robot. Drawn at the size of the 13pt symbols next to it, with the eyes and mouth cut out.
+/// A small robot head for the menu bar's running-agents count, drawn to match the adjacent symbols.
 func robotIcon() -> NSImage {
-    let image = NSImage(size: NSSize(width: 15, height: 15), flipped: true) { rect in
+    let image = NSImage(size: NSSize(width: 15, height: 15), flipped: true) { _ in
         let shape = NSBezierPath()
-        shape.append(NSBezierPath(ovalIn: NSRect(x: 6.1, y: 0.3, width: 2.8, height: 2.8)))          // antenna ball
-        shape.append(NSBezierPath(rect: NSRect(x: 6.85, y: 2.5, width: 1.3, height: 2.6)))            // antenna
-        shape.append(NSBezierPath(roundedRect: NSRect(x: 0.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9))
-        shape.append(NSBezierPath(roundedRect: NSRect(x: 12.5, y: 7.6, width: 2, height: 3.6), xRadius: 0.9, yRadius: 0.9))
-        shape.append(NSBezierPath(roundedRect: NSRect(x: 2.3, y: 4.6, width: 10.4, height: 9.6), xRadius: 2.8, yRadius: 2.8))
-        shape.windingRule = .nonZero
-        let rainbow = NSGradient(colors: [.systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple])
-        rainbow?.draw(in: shape, angle: 0)
+        shape.appendRoundedRect(NSRect(x: 6.8, y: 1.9, width: 1.4, height: 3.4), xRadius: 0.7, yRadius: 0.7)
+        shape.appendRoundedRect(NSRect(x: 2.5, y: 3.6, width: 10, height: 9.4), xRadius: 1.8, yRadius: 1.8)
+        shape.appendRoundedRect(NSRect(x: 0.5, y: 6.4, width: 1.5, height: 4.4), xRadius: 0.7, yRadius: 0.7)
+        shape.appendRoundedRect(NSRect(x: 13, y: 6.4, width: 1.5, height: 4.4), xRadius: 0.7, yRadius: 0.7)
 
-        NSGraphicsContext.current?.compositingOperation = .destinationOut
-        NSColor.black.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 4.6, y: 7.5, width: 2.3, height: 2.7)).fill()
-        NSBezierPath(ovalIn: NSRect(x: 8.1, y: 7.5, width: 2.3, height: 2.7)).fill()
-        NSBezierPath(roundedRect: NSRect(x: 5.5, y: 11.2, width: 4, height: 1.1), xRadius: 0.55, yRadius: 0.55).fill()
+        // Reverse the eye paths to cut them out of the filled head.
+        shape.append(NSBezierPath(ovalIn: NSRect(x: 4.45, y: 7, width: 2.1, height: 2.1)).reversed)
+        shape.append(NSBezierPath(ovalIn: NSRect(x: 8.45, y: 7, width: 2.1, height: 2.1)).reversed)
+
+        let blue = NSColor(srgbRed: 0.27, green: 0.59, blue: 0.88, alpha: 1)
+        let violet = NSColor(srgbRed: 0.56, green: 0.35, blue: 0.84, alpha: 1)
+        NSGradient(starting: blue, ending: violet)?.draw(in: shape, angle: 35)
         return true
     }
     image.accessibilityDescription = "Agents running"

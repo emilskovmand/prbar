@@ -7,12 +7,16 @@ struct DiagramView: View {
     let isFocused: (Agent) -> Bool
 
     var body: some View {
-        // Idle agents with nothing running under them are just names; keep them out of the way.
+        let idleCutoff = Date().addingTimeInterval(-10 * 60)
         let trees = agents.filter { $0.agent.state != .idle || $0.agent.runningSubagents > 0 }
-        let idle = agents.filter { !($0.agent.state != .idle || $0.agent.runningSubagents > 0) }
+        let idle = agents.filter { linked in
+            let agent = linked.agent
+            return agent.state == .idle && agent.runningSubagents == 0 && (agent.lastActivity ?? .distantPast) > idleCutoff
+        }
+
         VStack(alignment: .leading, spacing: 8) {
             if trees.isEmpty {
-                EmptyLine(text: agents.isEmpty ? "No agents running" : "No agents working right now")
+                EmptyLine(text: idle.isEmpty ? "No agents running" : "No agents working right now")
             }
             ForEach(trees) { AgentTree(linked: $0, focused: isFocused($0.agent)) }
             if !idle.isEmpty {
