@@ -95,6 +95,16 @@ struct Subagent: Identifiable {
     let running: Bool
     let startedAt: Date?
     let lastActivity: Date?
+    /// Running, but waiting for a shell command it started to finish.
+    var watching = false
+
+    var activity: Activity { !running ? .none : watching ? .watching : .working }
+
+    /// How busy a link in the diagram is; the busiest subagent along it decides.
+    enum Activity: Int, Comparable {
+        case none, watching, working
+        static func < (a: Activity, b: Activity) -> Bool { a.rawValue < b.rawValue }
+    }
 }
 
 /// Pulls a Linear-style ticket id ("bli-1637") out of a branch, path or title.

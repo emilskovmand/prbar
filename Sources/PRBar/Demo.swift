@@ -41,9 +41,10 @@ enum Demo {
     }
 
     private static func sub(_ id: String, _ name: String, parent: String? = nil, type: String? = nil,
-                            running: Bool, started: TimeInterval, last: TimeInterval = 5) -> Subagent {
+                            running: Bool, watching: Bool = false, started: TimeInterval, last: TimeInterval = 5) -> Subagent {
         Subagent(id: id, parentID: parent, name: name, type: type, running: running,
-                 startedAt: Date(timeIntervalSinceNow: -started), lastActivity: Date(timeIntervalSinceNow: -last))
+                 startedAt: Date(timeIntervalSinceNow: -started), lastActivity: Date(timeIntervalSinceNow: -last),
+                 watching: watching)
     }
 
     private static let syncAgent: Agent = {
@@ -62,7 +63,7 @@ enum Demo {
         var a = agent(.local, "Desktop", "Gift card balance API", .working, ago: 70, pr: 423, worktree: "gift-cards", edited: true)
         a.subagents = [
             sub("b1", "Work on the balance endpoint", running: true, started: 900),
-            sub("b2", "Work on the checkout UI", running: true, started: 880),
+            sub("b2", "Work on the checkout UI", running: true, watching: true, started: 880),
             sub("b3", "/code-review high", parent: "b1", running: true, started: 120),
         ]
         return a

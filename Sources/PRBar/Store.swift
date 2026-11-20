@@ -393,7 +393,7 @@ final class Store: ObservableObject {
             print("  \(a.agent.state) [\(a.agent.source)] \(a.agent.name) \(a.pr.map { "#\($0.number)" } ?? "-") \(relativeTime(a.agent.lastActivity)) worktree=\(a.agent.worktree ?? "-")\(a.agent.hasCodeChanges ? " code-changes" : "")")
             if a.agent.finishedSubagents > 0 { print("      \(a.agent.finishedSubagents) subagents finished") }
             for s in a.agent.subagents {
-                print("      \(s.running ? "running" : "done") \(s.id) parent=\(s.parentID ?? "main") [\(s.type ?? "general")] \(s.name) \(relativeTime(s.lastActivity))")
+                print("      \(s.watching ? "watching" : s.running ? "running" : "done") \(s.id) parent=\(s.parentID ?? "main") [\(s.type ?? "general")] \(s.name) \(relativeTime(s.lastActivity))")
             }
         }
     }

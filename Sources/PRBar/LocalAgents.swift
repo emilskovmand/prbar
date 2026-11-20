@@ -223,6 +223,7 @@ final class LocalAgents {
         var finished = false        // the meta file says so
         var ended = false           // its last message closed the turn
         var inTool = false          // its last message started a tool, which can run for minutes
+        var inShell = false         // that tool is a shell command
         var startedAt: Date?
     }
 
@@ -257,7 +258,8 @@ final class LocalAgents {
             // A stopped subagent leaves no end marker, so one that has been quiet for longer than
             // a model reply or a tool call takes counts as stopped.
             let quiet = now.timeIntervalSince(logAt ?? metaAt ?? .distantPast)
-            let running = !file.finished && !file.ended && quiet < (file.inTool ? 600 : 180)
+            // Bash commands can run for up to 10 minutes.
+            let running = !file.finished && !file.ended && quiet < (file.inShell ? 660 : file.inTool ? 600 : 180)
             all[id] = (file, running)
         }
 
@@ -286,7 +288,8 @@ final class LocalAgents {
         let subs = shown.compactMap { id -> Subagent? in
             guard let e = all[id] else { return nil }
             return Subagent(id: id, parentID: e.file.parentID, name: e.file.name, type: e.file.type,
-                            running: e.running, startedAt: e.file.startedAt, lastActivity: e.file.logAt)
+                            running: e.running, startedAt: e.file.startedAt, lastActivity: e.file.logAt,
+                            watching: e.running && e.file.inShell)
         }
         return (subs, all.values.filter { !$0.running }.count)
     }
@@ -313,6 +316,8 @@ final class LocalAgents {
             // Quotes inside message text are escaped, so these only match the message's own fields.
             file.ended = last.contains(#""stop_reason":"end_turn""#)
             file.inTool = last.contains(#""stop_reason":"tool_use""#)
+            // Nothing is written while a command runs, so its call stays the last line until it returns.
+            file.inShell = file.inTool && (last.contains(#""name":"Bash""#) || last.contains(#""name":"Monitor""#))
         }
         return file
     }
