@@ -1,13 +1,14 @@
 import AppKit
 
 /// Opens an agent's chat where it lives: the iTerm/Terminal tab of a running CLI session, a new
-/// terminal window or Claude Desktop for a finished one (wherever it was started), Codex, or claude.ai.
+/// terminal window or Claude Desktop for a finished one, Codex, T3 Code, or claude.ai.
 enum ChatOpener {
 
     /// Where `open` will take the user, for tooltips.
     static func destination(for agent: Agent) -> String {
         switch agent.kind {
         case .codex: return "Opens in Codex"
+        case .t3: return "Opens in T3 Code"
         case .cloud: return usesClaudeDesktop ? "Opens in Claude Desktop" : "Opens on claude.ai"
         case .local:
             if agent.running { return agent.hostApp?.lastPathComponent == "Claude.app" ? "Opens in Claude Desktop" : "Switches to its terminal tab" }
@@ -26,7 +27,7 @@ enum ChatOpener {
         case .cloud where usesClaudeDesktop:
             // Desktop routes claude://claude.ai/code/<id> to the session's Code view.
             if let url = URL(string: "claude://claude.ai/code/\(agent.id)") { NSWorkspace.shared.open(url) }
-        case .codex, .cloud:
+        case .codex, .t3, .cloud:
             if let url = agent.openURL { NSWorkspace.shared.open(url) }
         case .local:
             if agent.running {

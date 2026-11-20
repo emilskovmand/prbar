@@ -48,15 +48,18 @@ final class Store: ObservableObject {
     private(set) var cloudAgents: [Agent] = []
     private(set) var codexAgents: [Agent] = []
     private var history: [Agent] = []
+    private var t3Chats: [T3Agents.Chat] = []
 
     private let local = LocalAgents()
     private let cloud = CloudAgents()
     private let codex = CodexAgents()
+    private let t3 = T3Agents()
     private let sessionHistory = SessionHistory()
     private let localQueue = DispatchQueue(label: "prbar.local")
     private let githubQueue = DispatchQueue(label: "prbar.github")
     private let cloudQueue = DispatchQueue(label: "prbar.cloud")
     private let codexQueue = DispatchQueue(label: "prbar.codex")
+    private let t3Queue = DispatchQueue(label: "prbar.t3")
     private let historyQueue = DispatchQueue(label: "prbar.history")
     private var githubInFlight = false
     private var refreshStarted = Date.distantPast
@@ -82,13 +85,14 @@ final class Store: ObservableObject {
         schedule(every: 45) { [weak self] in self?.refreshGitHub() }
         schedule(every: 30) { [weak self] in self?.refreshCloud() }
         schedule(every: 5) { [weak self] in self?.refreshCodex() }
+        schedule(every: 5) { [weak self] in self?.refreshT3() }
         schedule(every: 60) { [weak self] in self?.refreshHistory() }
     }
 
     func refreshAll() {
         refreshing = true
         refreshStarted = Date()
-        refreshLocal(); refreshGitHub(); refreshCloud(); refreshCodex()
+        refreshLocal(); refreshGitHub(); refreshCloud(); refreshCodex(); refreshT3()
     }
 
     func setOpenAtLogin(_ on: Bool) {
@@ -190,6 +194,20 @@ final class Store: ObservableObject {
         }
     }
 
+    private func refreshT3() {
+        t3Queue.async { [weak self] in
+            guard let self else { return }
+            let chats = self.t3.poll()
+            DispatchQueue.main.async {
+                let workingIDs = Set(chats.filter { $0.agent.state == .working }.map { $0.agent.id })
+                let finished = self.t3Chats.contains { $0.agent.state == .working && !workingIDs.contains($0.agent.id) }
+                self.t3Chats = chats
+                if finished { self.refreshGitHub() }
+                self.publish()
+            }
+        }
+    }
+
     private func refreshHistory() {
         historyQueue.async { [weak self] in
             guard let self else { return }
@@ -219,10 +237,12 @@ final class Store: ObservableObject {
         onChange?()
     }
 
-    /// Every local agent (CLI, Desktop, IDE) and Codex thread that's running, plus cloud sessions
-    /// that are on an open PR or active in the last few days.
+    /// Active local chats, plus cloud sessions on an open PR or active in the last few days.
     private func visibleAgents() -> [Agent] {
-        localAgents + codexAgents + cloudAgents.filter { match($0) != nil || isRecent($0) }
+        let listedT3 = t3Chats.filter(\.listed)
+        let nativeIDs = Set(listedT3.flatMap(\.nativeSessionIDs))
+        let standalone = (localAgents + codexAgents).filter { !nativeIDs.contains($0.id) }
+        return standalone + listedT3.map(\.agent) + cloudAgents.filter { match($0) != nil || isRecent($0) }
     }
 
     // MARK: Linking
@@ -235,16 +255,24 @@ final class Store: ObservableObject {
         for agent in live {
             if let pr = linkable(agent) { byPR[pr.key, default: []].append(agent) }
         }
-        // Past chats, skipping any that are running (the live entry knows its terminal tab).
+        // T3 owns opening its own chats, even if the provider also exposes their transcripts.
         let liveIDs = Set(live.map(\.id))
         var pastByPR: [String: [Agent]] = [:]
+        var t3NativeIDsByPR: [String: Set<String>] = [:]
+        for chat in t3Chats {
+            guard let pr = linkable(chat.agent) else { continue }
+            t3NativeIDsByPR[pr.key, default: []].formUnion(chat.nativeSessionIDs)
+            if !liveIDs.contains(chat.agent.id) { pastByPR[pr.key, default: []].append(chat.agent) }
+        }
         for agent in history where !liveIDs.contains(agent.id) {
             if let pr = linkable(agent) { pastByPR[pr.key, default: []].append(agent) }
         }
 
         func row(_ pr: PullRequest) -> Row {
             let agents = byPR[pr.key] ?? []
-            let latest = (agents + (pastByPR[pr.key] ?? [])).max {
+            let latest = (agents + (pastByPR[pr.key] ?? [])).filter {
+                t3NativeIDsByPR[pr.key]?.contains($0.id) != true
+            }.max {
                 ($0.lastActivity ?? .distantPast) < ($1.lastActivity ?? .distantPast)
             }
             return Row(pr: pr, agents: sortAgents(agents), latestChat: latest)
@@ -297,6 +325,7 @@ final class Store: ObservableObject {
     func loadOnce() {
         localAgents = local.poll()
         codexAgents = codex.poll()
+        t3Chats = t3.poll()
         history = sessionHistory.poll() + codex.history()
         do {
             (prs, mergedPRs) = try GitHub.fetchMyPRs()
@@ -314,6 +343,7 @@ final class Store: ObservableObject {
         localAgents = Demo.localAgents
         cloudAgents = Demo.cloudAgents
         codexAgents = Demo.codexAgents
+        t3Chats = []
         history = []
         reviewRequested = Demo.reviewRequested
         reviewUpdated = Demo.reviewUpdated

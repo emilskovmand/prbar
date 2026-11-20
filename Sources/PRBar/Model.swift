@@ -54,11 +54,11 @@ enum AgentState: Int, Comparable {
 }
 
 struct Agent {
-    enum Kind { case local, cloud, codex }
+    enum Kind { case local, cloud, codex, t3 }
 
     let id: String
     let kind: Kind
-    let source: String         // shown in the panel: CLI, Desktop, VS Code, Codex, Cloud
+    let source: String         // shown in the panel: CLI, Desktop, VS Code, Codex, T3 Code, Cloud
     let name: String
     let state: AgentState
     let detail: String?        // last prompt / turn summary

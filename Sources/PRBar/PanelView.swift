@@ -633,7 +633,8 @@ private struct AgentRow: View {
                     subtitle.foregroundStyle(.tertiary)
                     // Kept whole; the subtitle shortens first.
                     if focused {
-                        Text("Focused").foregroundStyle(Color.accentColor).fixedSize()
+                        Image(systemName: "eye.fill").foregroundStyle(Color.accentColor).fixedSize()
+                            .help("The chat in the terminal tab you're in")
                     }
                     if agent.hasCodeChanges {
                         TagLabel(tag: Tag(text: "Code changes", color: Color(nsColor: .systemPurple))).fixedSize()
