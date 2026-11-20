@@ -4,7 +4,7 @@ import SwiftUI
 /// The panel shown from the menu bar icon. Clicking rows opens links in the background,
 /// so the panel stays open and several PRs can be opened in a row.
 struct PanelView: View {
-    enum Tab: String { case mine, review }
+    enum Tab: String { case mine, review, diagram }
 
     @ObservedObject var store: Store
     @ObservedObject var updater: Updater
@@ -26,6 +26,7 @@ struct PanelView: View {
                     switch tab {
                     case .mine: mine
                     case .review: review
+                    case .diagram: DiagramView(agents: store.agents) { focus.isFocused($0) }
                     }
                 }
                 .padding(.bottom, 6)
@@ -46,7 +47,8 @@ struct PanelView: View {
         HStack {
             Text("PRBar").font(.system(size: 13, weight: .semibold))
             Spacer()
-            TabSwitch(tab: $tab, reviewCount: store.reviewRequested.count)
+            TabSwitch(tab: $tab, reviewCount: store.reviewRequested.count,
+                      runningSubagents: store.agents.reduce(0) { $0 + $1.agent.runningSubagents })
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)
@@ -241,6 +243,7 @@ private struct HeightKey: PreferenceKey {
 private struct TabSwitch: View {
     @Binding var tab: PanelView.Tab
     let reviewCount: Int
+    let runningSubagents: Int
 
     var body: some View {
         HStack(spacing: 2) {
@@ -254,6 +257,20 @@ private struct TabSwitch: View {
                             .foregroundStyle(.white)
                             .frame(minWidth: 16, minHeight: 16)
                             .background(Circle().fill(Color.blue))
+                    }
+                }
+            }
+            segment(.diagram) {
+                HStack(spacing: 5) {
+                    Text("Diagram")
+                    if runningSubagents > 0 {
+                        Text(verbatim: "\(runningSubagents)")
+                            .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .frame(minWidth: 16, minHeight: 16)
+                            .background(Capsule().fill(Indicator.working.color))
+                            .help("\(runningSubagents) subagent\(runningSubagents == 1 ? "" : "s") running")
                     }
                 }
             }
@@ -307,7 +324,7 @@ private struct SectionHeader: View {
     }
 }
 
-private struct EmptyLine: View {
+struct EmptyLine: View {
     let text: String
 
     var body: some View {
@@ -321,7 +338,7 @@ private struct EmptyLine: View {
 
 /// Hover highlight plus a click action, shared by every row. A focused row (the chat in the
 /// terminal tab you're in, or its PR) is tinted like a selection.
-private struct RowButton: ViewModifier {
+struct RowButton: ViewModifier {
     var focused = false
     let action: () -> Void
     @State private var hovered = false
@@ -343,12 +360,12 @@ private struct RowButton: ViewModifier {
 }
 
 /// A status on a row's second line: a colored dot and label, or plain grey text without a dot.
-private struct Tag: Hashable {
+struct Tag: Hashable {
     let text: String
     var color: Color? = nil
 }
 
-private struct TagLabel: View {
+struct TagLabel: View {
     let tag: Tag
 
     var body: some View {
@@ -612,9 +629,11 @@ private struct ChatButton: View {
     }
 }
 
-private struct AgentRow: View {
+struct AgentRow: View {
     let linked: Store.LinkedAgent
     let focused: Bool
+    /// The diagram draws the subagents instead.
+    var countsSubagents = true
 
     private var agent: Agent { linked.agent }
     private var indicator: Indicator { Indicator(agent.state) }
@@ -635,6 +654,11 @@ private struct AgentRow: View {
                     if focused {
                         Image(systemName: "eye.fill").foregroundStyle(Color.accentColor).fixedSize()
                             .help("The chat in the terminal tab you're in")
+                    }
+                    if countsSubagents && agent.runningSubagents > 0 {
+                        Text("\(Image(systemName: "point.3.connected.trianglepath.dotted")) \(agent.runningSubagents)")
+                            .foregroundStyle(Indicator.working.color).fixedSize()
+                            .help("\(agent.runningSubagents) subagent\(agent.runningSubagents == 1 ? "" : "s") running; see Diagram")
                     }
                     if agent.hasCodeChanges {
                         TagLabel(tag: Tag(text: "Code changes", color: Color(nsColor: .systemPurple))).fixedSize()

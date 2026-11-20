@@ -40,9 +40,37 @@ enum Demo {
               branches: [], ticket: nil, openURL: nil, resumeCommand: nil, worktree: worktree, hasCodeChanges: edited)
     }
 
+    private static func sub(_ id: String, _ name: String, parent: String? = nil, type: String? = nil,
+                            running: Bool, started: TimeInterval, last: TimeInterval = 5) -> Subagent {
+        Subagent(id: id, parentID: parent, name: name, type: type, running: running,
+                 startedAt: Date(timeIntervalSinceNow: -started), lastActivity: Date(timeIntervalSinceNow: -last))
+    }
+
+    private static let syncAgent: Agent = {
+        var a = agent(.local, "CLI", "Fix flaky inventory sync", .working, ago: 12, pr: 418, worktree: "inventory-sync", edited: true)
+        a.subagents = [
+            sub("a1", "Find where the sync job retries", type: "Explore", running: false, started: 600, last: 420),
+            sub("a2", "Write a regression test for the race", running: true, started: 240),
+            sub("a3", "/code-review medium", parent: "a2", running: true, started: 50),
+            sub("a4", "Check the queue library's changelog", type: "web-fetch", running: true, started: 30),
+        ]
+        a.finishedSubagents = 3
+        return a
+    }()
+
+    private static let giftCardAgent: Agent = {
+        var a = agent(.local, "Desktop", "Gift card balance API", .working, ago: 70, pr: 423, worktree: "gift-cards", edited: true)
+        a.subagents = [
+            sub("b1", "Work on the balance endpoint", running: true, started: 900),
+            sub("b2", "Work on the checkout UI", running: true, started: 880),
+            sub("b3", "/code-review high", parent: "b1", running: true, started: 120),
+        ]
+        return a
+    }()
+
     static let localAgents = [
-        agent(.local, "CLI", "Fix flaky inventory sync", .working, ago: 12, pr: 418, worktree: "inventory-sync", edited: true),
-        agent(.local, "Desktop", "Gift card balance API", .working, ago: 70, pr: 423, worktree: "gift-cards", edited: true),
+        syncAgent,
+        giftCardAgent,
         agent(.local, "CLI", "Explain the order state machine", .idle, ago: 5 * 3600, pr: nil),
     ]
     static let cloudAgents = [agent(.cloud, "Cloud", "Apple Pay checkout", .needsYou, ago: 180, pr: 412)]

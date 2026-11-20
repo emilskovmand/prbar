@@ -78,6 +78,23 @@ struct Agent {
     var tty: String? = nil          // e.g. /dev/ttys002
     var hostApp: URL? = nil         // the app the session runs in (iTerm, Terminal, Cursor, Claude…)
     var hasCodeChanges = false      // files it edited are uncommitted, or its worktree has unpushed commits
+    /// Subagents worth drawing: the running ones, the ones that just finished, and their parents.
+    var subagents: [Subagent] = []
+    var finishedSubagents = 0       // every subagent of the session that isn't running any more
+
+    var runningSubagents: Int { subagents.filter(\.running).count }
+}
+
+/// An agent started by another agent (Claude Code's Agent tool, or a skill that runs in a fork).
+struct Subagent: Identifiable {
+    let id: String
+    /// The subagent that started it; nil when the main agent did.
+    let parentID: String?
+    let name: String
+    let type: String?               // "Explore", "fork"…; nil for the general-purpose default
+    let running: Bool
+    let startedAt: Date?
+    let lastActivity: Date?
 }
 
 /// Pulls a Linear-style ticket id ("bli-1637") out of a branch, path or title.

@@ -168,7 +168,13 @@ final class CodexAgents {
         return (.idle, lastPrompt)
     }
 
+    private var codexRunning: (running: Bool, at: Date)?
+
+    /// Asked at most every 15 seconds: it starts a process, and polls come every 2.
     private func isCodexRunning() -> Bool {
-        (try? Shell.run(["pgrep", "-i", "codex"], timeout: 5)) != nil
+        if let c = codexRunning, -c.at.timeIntervalSinceNow < 15 { return c.running }
+        let running = (try? Shell.run(["pgrep", "-i", "codex"], timeout: 5)) != nil
+        codexRunning = (running, Date())
+        return running
     }
 }

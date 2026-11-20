@@ -5,6 +5,12 @@ import SwiftUI
 /// click another app, until you close it from the menu bar icon or with Esc.
 let keepPanelOpenKey = "keepPanelOpen"
 
+/// Whether the panel is on screen, so animations can stop while it's closed.
+final class PanelVisibility: ObservableObject {
+    static let shared = PanelVisibility()
+    @Published fileprivate(set) var visible = false
+}
+
 /// A borderless panel placed under the menu bar icon when opened. Unlike NSPopover it is not
 /// anchored to the icon, so it stays put when an auto-hiding menu bar slides away.
 final class FloatingPanel<Content: View>: NSPanel {
@@ -72,6 +78,7 @@ final class FloatingPanel<Content: View>: NSPanel {
 
         NSApp.activate()
         makeKeyAndOrderFront(nil)
+        PanelVisibility.shared.visible = true
 
         // A click in any other app closes the panel, like a popover.
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -86,6 +93,7 @@ final class FloatingPanel<Content: View>: NSPanel {
         if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
         clickMonitor = nil
         orderOut(nil)
+        PanelVisibility.shared.visible = false
     }
 }
 

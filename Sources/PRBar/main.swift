@@ -40,7 +40,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--demo-screenshots"), i + 1 < C
     let saved = (defaults.string(forKey: "tab"), defaults.string(forKey: "collapsedSections"))
     defaults.removeObject(forKey: "collapsedSections")
     delegate.store.loadDemo()
-    for tab in ["mine", "review"] {
+    for tab in ["mine", "review", "diagram"] {
         defaults.set(tab, forKey: "tab")
         for (name, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
             try renderPanel(to: "\(dir)/panel-\(tab)-\(name).png", appearance: appearance, rounded: true, settle: 0.5)

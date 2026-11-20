@@ -62,6 +62,8 @@ final class Store: ObservableObject {
     private let t3Queue = DispatchQueue(label: "prbar.t3")
     private let historyQueue = DispatchQueue(label: "prbar.history")
     private var githubInFlight = false
+    /// Sources still polling; a slow poll is skipped rather than queued behind itself.
+    private var polling = Set<String>()
     private var refreshStarted = Date.distantPast
     private var menuOpen = false
     private var publishPending = false
@@ -81,11 +83,12 @@ final class Store: ObservableObject {
             self.menuOpen = false
             if self.publishPending { self.publish() }
         }
-        schedule(every: 3) { [weak self] in self?.refreshLocal() }
+        // Agents change by the second; PRs don't, and GitHub's API is rate limited.
+        schedule(every: 1) { [weak self] in self?.refreshLocal() }
         schedule(every: 45) { [weak self] in self?.refreshGitHub() }
-        schedule(every: 30) { [weak self] in self?.refreshCloud() }
-        schedule(every: 5) { [weak self] in self?.refreshCodex() }
-        schedule(every: 5) { [weak self] in self?.refreshT3() }
+        schedule(every: 15) { [weak self] in self?.refreshCloud() }
+        schedule(every: 2) { [weak self] in self?.refreshCodex() }
+        schedule(every: 2) { [weak self] in self?.refreshT3() }
         schedule(every: 60) { [weak self] in self?.refreshHistory() }
     }
 
@@ -114,10 +117,12 @@ final class Store: ObservableObject {
     // MARK: Refresh
 
     private func refreshLocal() {
+        guard polling.insert("local").inserted else { return }
         localQueue.async { [weak self] in
             guard let self else { return }
             let agents = self.local.poll()
             DispatchQueue.main.async {
+                self.polling.remove("local")
                 // An agent finishing a turn has often just pushed, so pull fresh PR state right away.
                 let finished = self.localAgents.contains { old in
                     old.state == .working && agents.first { $0.id == old.id }?.state != .working
@@ -170,10 +175,12 @@ final class Store: ObservableObject {
     }
 
     private func refreshCloud() {
+        guard polling.insert("cloud").inserted else { return }
         cloudQueue.async { [weak self] in
             guard let self else { return }
             let result = Result { try self.cloud.poll() }
             DispatchQueue.main.async {
+                self.polling.remove("cloud")
                 switch result {
                 case .success(let agents): self.cloudAgents = agents; self.cloudError = nil
                 case .failure(let e): self.cloudError = "\(e)"
@@ -184,10 +191,12 @@ final class Store: ObservableObject {
     }
 
     private func refreshCodex() {
+        guard polling.insert("codex").inserted else { return }
         codexQueue.async { [weak self] in
             guard let self else { return }
             let agents = self.codex.poll()
             DispatchQueue.main.async {
+                self.polling.remove("codex")
                 self.codexAgents = agents
                 self.publish()
             }
@@ -195,10 +204,12 @@ final class Store: ObservableObject {
     }
 
     private func refreshT3() {
+        guard polling.insert("t3").inserted else { return }
         t3Queue.async { [weak self] in
             guard let self else { return }
             let chats = self.t3.poll()
             DispatchQueue.main.async {
+                self.polling.remove("t3")
                 let workingIDs = Set(chats.filter { $0.agent.state == .working }.map { $0.agent.id })
                 let finished = self.t3Chats.contains { $0.agent.state == .working && !workingIDs.contains($0.agent.id) }
                 self.t3Chats = chats
@@ -296,8 +307,19 @@ final class Store: ObservableObject {
             return pr
         }
         if let pr = prs.first(where: { agent.branches.contains($0.headRef) }) { return pr }
-        if let t = agent.ticket, let pr = prs.first(where: { ticketID(in: $0.headRef) == t }) { return pr }
+        if let t = agent.ticket, let pr = prs.first(where: { ticket(of: $0.headRef) == t }) { return pr }
         return nil
+    }
+
+    /// Branch → ticket id, since linking runs on every poll for every agent and every PR.
+    private var branchTickets: [String: String?] = [:]
+
+    private func ticket(of branch: String) -> String? {
+        if let t = branchTickets[branch] { return t }
+        if branchTickets.count > 2000 { branchTickets = [:] }
+        let t = ticketID(in: branch)
+        branchTickets[branch] = t
+        return t
     }
 
     private func isRecent(_ agent: Agent) -> Bool {
@@ -369,6 +391,10 @@ final class Store: ObservableObject {
         print("-- agents")
         for a in agents {
             print("  \(a.agent.state) [\(a.agent.source)] \(a.agent.name) \(a.pr.map { "#\($0.number)" } ?? "-") \(relativeTime(a.agent.lastActivity)) worktree=\(a.agent.worktree ?? "-")\(a.agent.hasCodeChanges ? " code-changes" : "")")
+            if a.agent.finishedSubagents > 0 { print("      \(a.agent.finishedSubagents) subagents finished") }
+            for s in a.agent.subagents {
+                print("      \(s.running ? "running" : "done") \(s.id) parent=\(s.parentID ?? "main") [\(s.type ?? "general")] \(s.name) \(relativeTime(s.lastActivity))")
+            }
         }
     }
 }
