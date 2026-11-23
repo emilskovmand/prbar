@@ -11,7 +11,7 @@ enum GitHub {
       reviewThreads(first: 100) { nodes { isResolved } }
       commits(last: 1) { nodes { commit { committedDate statusCheckRollup { contexts(first: 100) { nodes {
         __typename
-        ... on CheckRun { status conclusion }
+        ... on CheckRun { name status conclusion startedAt checkSuite { workflowRun { workflow { name } } } }
         ... on StatusContext { state }
       } } } } } }
     }
@@ -99,8 +99,23 @@ enum GitHub {
         let rollup = commit?["statusCheckRollup"] as? [String: Any]
         let contexts = ((rollup?["contexts"] as? [String: Any])?["nodes"] as? [[String: Any]]) ?? []
 
-        var passed = 0, failed = 0, pending = 0
+        // A re-run or a newer run of the same workflow leaves the older check runs in the rollup, often
+        // CANCELLED by concurrency. Count only the newest run of each workflow job.
+        var newestRun: [String: [String: Any]] = [:]
+        var statuses: [[String: Any]] = []
         for c in contexts {
+            guard c["__typename"] as? String == "CheckRun" else { statuses.append(c); continue }
+            let workflow = ((((c["checkSuite"] as? [String: Any])?["workflowRun"] as? [String: Any])?["workflow"]
+                as? [String: Any])?["name"] as? String) ?? ""
+            let key = workflow + "\u{0}" + (c["name"] as? String ?? "")
+            // ISO 8601 timestamps sort as strings; a run that hasn't started yet is the newest.
+            let started = { (run: [String: Any]) in run["startedAt"] as? String ?? "~" }
+            if let existing = newestRun[key], started(existing) >= started(c) { continue }
+            newestRun[key] = c
+        }
+
+        var passed = 0, failed = 0, pending = 0
+        for c in Array(newestRun.values) + statuses {
             if c["__typename"] as? String == "CheckRun" {
                 if c["status"] as? String != "COMPLETED" { pending += 1; continue }
                 switch c["conclusion"] as? String {
